@@ -1,5 +1,5 @@
 // Base URL for API calls
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api'; // Changed to a relative path
 
 
 // --- Global UI State ---
