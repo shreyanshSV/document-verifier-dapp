@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jharkhand Document Verification Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-shadow {
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+<div id="guestPage" class="min-h-screen gradient-bg flex items-center justify-center p-4">
+    <div class="max-w-4xl w-full">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                🏛️ Jharkhand Document Verification Portal
+            </h1>
+            <p class="text-xl text-blue-100 mb-8">
+                Secure, Fast & Reliable Document Verification System
+            </p>
+        </div>
+
+
+        <div class="bg-white rounded-2xl card-shadow p-8 md:p-12">
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Welcome to Official Portal</h2>
+                    <div class="space-y-4 mb-8">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-gray-700">Verify Birth Certificates</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-gray-700">Validate Educational Documents</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-gray-700">Check Property Records</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-gray-700">Verify Identity Documents</span>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="space-y-4">
+                    <button onclick="showGuestAuth()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition duration-300 transform hover:scale-105">
+                        🆕 New User? Sign Up Here
+                    </button>
+                    <button onclick="showUserLogin()" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-xl transition duration-300 transform hover:scale-105">
+                        👤 Existing User Login
+                    </button>
+                    <div class="text-center">
+                        <p class="text-gray-600 text-sm">
+                            Secure portal powered by Government of Jharkhand
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div id="guestAuthPage" class="hidden min-h-screen bg-gray-100 py-8">
+    <div class="max-w-md mx-auto bg-white rounded-2xl card-shadow p-8">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-gray-800">Create Account</h2>
+            <p class="text-gray-600 mt-2">Join Jharkhand Document Portal</p>
+        </div>
+
+
+        <div class="mb-6">
+            <div class="flex bg-gray-100 rounded-lg p-1">
+                <button id="signupTab" onclick="switchGuestTab('signup')" class="flex-1 py-2 px-4 rounded-md bg-blue-600 text-white font-medium transition">
+                    Sign Up
+                </button>
+                <button id="signinTab" onclick="switchGuestTab('signin')" class="flex-1 py-2 px-4 rounded-md text-gray-600 font-medium transition">
+                    Sign In
+                </button>
+            </div>
+        </div>
+
+
+        <form id="signup-form" class="space-y-4">
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Full Name</label>
+                <input type="text" id="signup-fullname" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your full name" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Email Address</label>
+                <input type="email" id="signup-email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Phone Number</label>
+                <input type="tel" id="signup-phone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your phone number" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Password</label>
+                <input type="password" id="signup-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Create a password" required>
+            </div>
+            <div id="signup-message" class="mt-4 text-center"></div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition duration-300">
+                Create Account
+            </button>
+        </form>
+
+
+        <form id="signin-form" class="space-y-4 hidden">
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Email Address</label>
+                <input type="email" id="signin-email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Password</label>
+                <input type="password" id="signin-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your password" required>
+            </div>
+            <div id="signin-message" class="mt-4 text-center"></div>
+            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition duration-300">
+                Sign In
+            </button>
+        </form>
+
+
+        <div class="mt-6 text-center">
+            <button onclick="showGuestPage()" class="text-blue-600 hover:text-blue-800 font-medium">
+                ← Back to Home
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<div id="userLoginPage" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-2xl card-shadow p-8">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-gray-800">Welcome Back</h2>
+            <p class="text-gray-600 mt-2">Sign in to your dashboard</p>
+        </div>
+
+
+        <form id="user-login-form" class="space-y-6">
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Email Address</label>
+                <input type="email" id="user-login-email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-2">Password</label>
+                <input type="password" id="user-login-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your password" required>
+            </div>
+            <div id="user-login-message" class="mt-4 text-center"></div>
+            <div class="flex items-center justify-between">
+                <label class="flex items-center">
+                    <input type="checkbox" id="user-login-remember" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <span class="ml-2 text-sm text-gray-600">Remember me</span>
+                </label>
+                <a href="#" class="text-sm text-blue-600 hover:text-blue-800">Forgot password?</a>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition duration-300">
+                Sign In to Dashboard
+            </button>
+        </form>
+
+
+        <div class="mt-6 text-center">
+            <button onclick="showGuestPage()" class="text-blue-600 hover:text-blue-800 font-medium">
+                ← Back to Home
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<div id="dashboard" class="hidden min-h-screen bg-gray-50">
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-gray-800">🏛️ Jharkhand Portal</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="welcome-message" class="text-gray-600">Welcome, User</span>
+                    <button onclick="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+
+    <div class="flex">
+        <div class="w-64 bg-white shadow-sm min-h-screen">
+            <div class="p-4">
+                <nav class="space-y-2">
+                    <button onclick="showDashboardSection('home')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg bg-blue-50 text-blue-700 font-medium">
+                        🏠 Home
+                    </button>
+                    <button onclick="showDashboardSection('verify')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                        📋 Verify Documents
+                    </button>
+                    <button onclick="showDashboardSection('profile')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                        👤 Profile/Account
+                    </button>
+                    <button onclick="showDashboardSection('about')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                        ℹ️ About
+                    </button>
+                    <button onclick="showDashboardSection('settings')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                        ⚙️ Settings
+                    </button>
+                    <button onclick="showDashboardSection('contact')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                        📞 Contact Us
+                    </button>
+                    <button onclick="showDashboardSection('help')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                        ❓ Help
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+
+        <div class="flex-1 p-8">
+            <div id="homeSection" class="dashboard-section">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Dashboard Home</h2>
+                <div class="grid md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl card-shadow">
+                        <div class="text-blue-600 text-3xl mb-4">📋</div>
+                        <h3 class="text-xl font-semibold mb-2">Documents Verified</h3>
+                        <p id="total-verified" class="text-3xl font-bold text-blue-600">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl card-shadow">
+                        <div class="text-green-600 text-3xl mb-4">✅</div>
+                        <h3 class="text-xl font-semibold mb-2">Successful Verifications</h3>
+                        <p id="successful-verifications" class="text-3xl font-bold text-green-600">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl card-shadow">
+                        <div class="text-orange-600 text-3xl mb-4">⏳</div>
+                        <h3 class="text-xl font-semibold mb-2">Pending Requests</h3>
+                        <p id="pending-requests" class="text-3xl font-bold text-orange-600">0</p>
+                    </div>
+                </div>
+
+
+                <div class="bg-white rounded-xl card-shadow p-6">
+                    <h3 class="text-xl font-semibold mb-4">Quick Actions</h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <button onclick="showDashboardSection('verify')" class="p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition">
+                            <div class="text-blue-600 text-2xl mb-2">📄</div>
+                            <div class="font-medium">Verify New Document</div>
+                        </button>
+                        <button class="p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition">
+                            <div class="text-green-600 text-2xl mb-2">📊</div>
+                            <div class="font-medium">View Reports</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="verifySection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Document Verification</h2>
+                <div class="bg-white p-8 rounded-2xl card-shadow w-full max-w-md mx-auto">
+                    <div class="text-center">
+                        <p class="text-gray-500 mb-6">Upload a file to check its status.</p>
+                    </div>
+
+
+                    <form id="verify-form" class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Document Type</label>
+                            <select id="doc-type" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option>Birth Certificate</option>
+                                <option>Educational Certificate</option>
+                                <option>Property Document</option>
+                                <option>Identity Card</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Document Number</label>
+                            <input type="text" id="doc-number" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Enter document number">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Upload Document</label>
+                            <div id="file-drop-area" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer">
+                                <div class="text-gray-400 text-4xl mb-4">📁</div>
+                                <p class="text-gray-600">Click to upload or drag and drop</p>
+                                <input type="file" id="document-file" class="hidden" accept=".pdf,.jpg,.png">
+                            </div>
+                        </div>
+                        <button type="submit"
+                                class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                            Verify Document
+                        </button>
+                    </form>
+
+
+                    <div id="result" class="mt-6 p-4 text-center text-gray-700 font-semibold bg-gray-50 rounded-lg border border-gray-200">
+                        Awaiting verification...
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="profileSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Profile & Account</h2>
+                <div class="bg-white rounded-xl card-shadow p-6">
+                    <div class="flex items-center space-x-6 mb-8">
+                        <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-3xl">
+                            👤
+                        </div>
+                        <div>
+                            <h3 id="profile-fullname" class="text-2xl font-semibold">John Doe</h3>
+                            <p id="profile-email" class="text-gray-600">john.doe@email.com</p>
+                        </div>
+                    </div>
+
+
+                    <form id="profile-form" class="space-y-4">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Full Name</label>
+                                <input type="text" id="profile-edit-fullname" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Email</label>
+                                <input type="email" id="profile-edit-email" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Phone</label>
+                            <input type="tel" id="profile-edit-phone" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                        </div>
+                        <div id="profile-message" class="mt-4 text-center"></div>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition">
+                            Update Profile
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+
+            <div id="aboutSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">About Jharkhand Portal</h2>
+                <div class="bg-white rounded-xl card-shadow p-6">
+                    <div class="prose max-w-none">
+                        <p class="text-lg text-gray-700 mb-6">
+                            The Jharkhand Document Verification Portal is an official government platform designed to provide secure and efficient document verification services for the citizens of Jharkhand.
+                        </p>
+
+
+                        <h3 class="text-xl font-semibold mb-4">Our Services</h3>
+                        <ul class="space-y-2 mb-6">
+                            <li class="flex items-center space-x-3">
+                                <span class="text-green-500">✓</span>
+                                <span>Birth Certificate Verification</span>
+                            </li>
+                            <li class="flex items-center space-x-3">
+                                <span class="text-green-500">✓</span>
+                                <span>Educational Document Validation</span>
+                            </li>
+                            <li class="flex items-center space-x-3">
+                                <span class="text-green-500">✓</span>
+                                <span>Property Record Verification</span>
+                            </li>
+                            <li class="flex items-center space-x-3">
+                                <span class="text-green-500">✓</span>
+                                <span>Identity Document Authentication</span>
+                            </li>
+                        </ul>
+
+
+                        <h3 class="text-xl font-semibold mb-4">Contact Information</h3>
+                        <p class="text-gray-700">
+                            Government of Jharkhand<br>
+                            Secretariat, Ranchi - 834001<br>
+                            Phone: +91-651-2446001<br>
+                            Email: support@jharkhand.gov.in
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="settingsSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Settings</h2>
+                <div class="space-y-6">
+                    <div class="bg-white rounded-xl card-shadow p-6">
+                        <h3 class="text-xl font-semibold mb-4">Account Settings</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700">Email Notifications</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="email-toggle" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700">SMS Notifications</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="sms-toggle" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="bg-white rounded-xl card-shadow p-6">
+                        <h3 class="text-xl font-semibold mb-4">Security</h3>
+                        <div class="space-y-4">
+                            <button class="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                🔒 Change Password
+                            </button>
+                            <button class="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                📱 Two-Factor Authentication
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="contactSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Contact Us</h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl card-shadow p-6">
+                        <h3 class="text-xl font-semibold mb-4">Get in Touch</h3>
+                        <form id="contact-form" class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Subject</label>
+                                <input type="text" id="contact-subject" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="Enter subject">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Message</label>
+                                <textarea rows="4" id="contact-message" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="Enter your message"></textarea>
+                            </div>
+                            <div id="contact-message-status" class="mt-4 text-center"></div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">
+                                Send Message
+                            </button>
+                        </form>
+                    </div>
+
+
+                    <div class="bg-white rounded-xl card-shadow p-6">
+                        <h3 class="text-xl font-semibold mb-4">Contact Information</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-blue-600 text-xl">📍</span>
+                                <div>
+                                    <p class="font-medium">Address</p>
+                                    <p class="text-gray-600">Secretariat, Ranchi - 834001</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-blue-600 text-xl">📞</span>
+                                <div>
+                                    <p class="font-medium">Phone</p>
+                                    <p class="text-gray-600">+91-651-2446001</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-blue-600 text-xl">✉️</span>
+                                <div>
+                                    <p class="font-medium">Email</p>
+                                    <p class="text-gray-600">support@jharkhand.gov.in</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-blue-600 text-xl">🕒</span>
+                                <div>
+                                    <p class="font-medium">Office Hours</p>
+                                    <p class="text-gray-600">Mon-Fri: 9:00 AM - 6:00 PM</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="helpSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Help & Support</h2>
+                <div class="space-y-6">
+                    <div class="bg-white rounded-xl card-shadow p-6">
+                        <h3 class="text-xl font-semibold mb-4">Frequently Asked Questions</h3>
+                        <div class="space-y-4">
+                            <div class="border-b pb-4">
+                                <button class="w-full text-left font-medium text-gray-800 hover:text-blue-600">
+                                    How do I verify my birth certificate?
+                                </button>
+                                <p class="text-gray-600 mt-2">Go to the Document Verification section, select "Birth Certificate" from the dropdown, enter your certificate number, and upload the document.</p>
+                            </div>
+                            <div class="border-b pb-4">
+                                <button class="w-full text-left font-medium text-gray-800 hover:text-blue-600">
+                                    What documents are supported?
+                                </button>
+                                <p class="text-gray-600 mt-2">We support birth certificates, educational certificates, property documents, and identity cards issued by Jharkhand government.</p>
+                            </div>
+                            <div class="border-b pb-4">
+                                <button class="w-full text-left font-medium text-gray-800 hover:text-blue-600">
+                                    How long does verification take?
+                                </button>
+                                <p class="text-gray-600 mt-2">Most verifications are completed within 24-48 hours. You'll receive an email notification once the process is complete.</p>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="bg-white rounded-xl card-shadow p-6">
+                        <h3 class="text-xl font-semibold mb-4">Need More Help?</h3>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <button onclick="showDashboardSection('contact')" class="p-4 border border-blue-200 rounded-lg hover:bg-blue-50 text-center">
+                                <div class="text-blue-600 text-2xl mb-2">💬</div>
+                                <div class="font-medium">Contact Support</div>
+                            </button>
+                            <button class="p-4 border border-green-200 rounded-lg hover:bg-green-50 text-center">
+                                <div class="text-green-600 text-2xl mb-2">📚</div>
+                                <div class="font-medium">User Guide</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
