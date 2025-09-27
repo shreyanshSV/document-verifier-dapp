@@ -10,25 +10,50 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import { createWorker } from 'tesseract.js';
 import qrcode from 'qrcode';
+import MongoStore from "connect-mongodb-session";
 
 // Load environment variables from .env file
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
+
 app.use(express.json());
+
+// Get credentials from your .env file
+const MONGODB_URI = "mongodb+srv://shreyanshvariya2006:sVhNKGEVuWUpzwBA@genai.nlsmnrj.mongodb.net/verifier_db?retryWrites=true&w=majority&appName=genai";
+const SESSION_SECRET = process.env.SESSION_SECRET || "YOUR_VERY_LONG_AND_RANDOM_SECRET_KEY_HERE_AS_ITS_NOT_ON_GITHUB";
+
+
+// --- SESSION STORE FIX: Replace MemoryStore with MongoDBStore (Removed deprecated options) ---
+const MongoDBStore = MongoStore(session);
+const sessionStore = new MongoDBStore({
+    uri: MONGODB_URI,
+    collection: 'sessions',
+    expires: 1000 * 60 * 60 * 24 * 7, // 1 week session expiration
+    // connectionOptions are removed, as they are no longer needed
+});
+
+// Handle session store errors
+sessionStore.on('error', function(error) {
+    console.error("Session Store Error:", error);
+});
 
 app.use(
     session({
-        secret: process.env.SESSION_SECRET || "DEFAULT_SECRET_KEY",
+        secret: SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
-        // CRITICAL FIX: SameSite: 'lax' for robust localhost session handling
-        cookie: { secure: process.env.NODE_ENV === 'production', sameSite: 'lax' },
+        store: sessionStore, // <-- Using MongoDB store
+        cookie: {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 1000 * 60 * 60 * 24 * 7
+        },
     })
 );
 
@@ -37,12 +62,11 @@ const upload = multer({ storage });
 
 app.use(express.static(__dirname));
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
+// --- MONGOOSE CONNECTION (Removed deprecated options) ---
 mongoose
     .connect(MONGODB_URI)
-    .then(() => console.log("✅ Successfully connected to MongoDB Atlas!"))
-    .catch((err) => console.error("❌ MongoDB Connection error:", err.message));
+    .then(() => console.log(" Successfully connected to MongoDB Atlas!"))
+    .catch((err) => console.error(" MongoDB Connection error:", err.message));
 
 // --- Blockchain Setup ---
 const web3 = new Web3(process.env.WEB3_PROVIDER_URL || "http://127.0.0.1:7545");
@@ -57,8 +81,10 @@ async function sendHashToBlockchain(fileHash) {
         if (!privateKey || privateKey.length < 64) {
             throw new Error("Private key is missing or invalid. Please check your .env file.");
         }
+
         const txCount = await web3.eth.getTransactionCount(accountAddress);
         const gasPrice = await web3.eth.getGasPrice();
+
         const tx = {
             nonce: web3.utils.toHex(txCount),
             gasLimit: web3.utils.toHex(500000),
@@ -67,15 +93,17 @@ async function sendHashToBlockchain(fileHash) {
             value: "0x0",
             data: web3.utils.toHex(fileHash),
         };
+
         const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
         if (!signedTx || !signedTx.rawTransaction) {
             throw new Error("Failed to sign transaction, rawTransaction is missing.");
         }
+
         const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-        console.log("✅ Blockchain Tx Successful:", receipt.transactionHash);
+        console.log(" Blockchain Tx Successful:", receipt.transactionHash);
         return receipt.transactionHash;
     } catch (err) {
-        console.error("❌ Blockchain Tx Failed:", err.message || err);
+        console.error(" Blockchain Tx Failed:", err.message || err);
         return null;
     }
 }
@@ -85,12 +113,11 @@ let worker;
 (async () => {
     try {
         worker = await createWorker('eng');
-        console.log("✅ Tesseract.js worker initialized successfully.");
+        console.log(" Tesseract.js worker initialized successfully.");
     } catch (err) {
-        console.error("❌ Error initializing Tesseract.js worker:", err.message || err);
+        console.error(" Error initializing Tesseract.js worker:", err.message || err);
     }
 })();
-
 
 // --- Mongoose Schemas ---
 const userSchema = new mongoose.Schema({
@@ -155,7 +182,7 @@ function isAuthenticated(req, res, next) {
 }
 
 // ----------------------------------------------------
-// --- ROUTES (Defined after all Models & Middleware) ---
+// --- ROUTES ---
 // ----------------------------------------------------
 
 // Authentication Routes
@@ -206,6 +233,7 @@ app.post("/api/auth/logout", (req, res) => {
 // User Profile Routes
 app.get("/api/profile", isAuthenticated, async (req, res) => {
     try {
+        // Find user but exclude password field
         const user = await User.findById(req.session.userId).select("-password");
         if (!user) return res.status(404).json({ message: "User not found." });
         res.json(user);
@@ -218,6 +246,7 @@ app.get("/api/profile", isAuthenticated, async (req, res) => {
 app.put("/api/profile", isAuthenticated, async (req, res) => {
     try {
         const { fullName, email, phone } = req.body;
+
         const existingUser = await User.findOne({ email });
         if (existingUser && existingUser._id.toString() !== req.session.userId.toString()) {
             return res.status(400).json({ message: "Email already in use by another account." });
@@ -242,7 +271,7 @@ app.put("/api/settings", isAuthenticated, async (req, res) => {
     }
 });
 
-// --- RESTORED ROUTE: Link Wallet Address to Profile (FIXED LOCATION) ---
+// --- Link Wallet Address to Profile ---
 app.post("/api/profile/link-wallet", isAuthenticated, async (req, res) => {
     const { walletAddress } = req.body;
     const userId = req.session.userId;
@@ -339,6 +368,7 @@ app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, 
                 qrCodeLink: null
             });
         }
+
     } catch (error) {
         console.error("Error during verification:", error.message);
         res.status(500).json({ message: "An internal server error occurred during verification." });
@@ -348,7 +378,6 @@ app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, 
 // QR Code Initial Check Endpoint
 app.get("/api/qr-check", async (req, res) => {
     const qrId = req.query.id;
-
     if (!qrId) {
         return res.status(400).json({ message: "QR Document ID is required." });
     }
@@ -366,7 +395,6 @@ app.get("/api/qr-check", async (req, res) => {
             submittedAt: verificationRecord.submittedAt,
             message: "Initial verification check successful."
         });
-
     } catch (error) {
         console.error("Error during QR initial check:", error.message);
         res.status(500).json({ message: "An internal server error occurred during QR check." });
@@ -394,7 +422,6 @@ app.post("/api/qr-verify-signature", async (req, res) => {
 
         // 3. Retrieve Document and Owner Information
         const verificationRecord = await DocumentVerification.findOne({ qrId: qrId });
-
         if (!verificationRecord) {
             return res.status(404).json({ message: "Document record not found." });
         }
@@ -430,11 +457,11 @@ app.post("/api/qr-verify-signature", async (req, res) => {
     }
 });
 
-
 // Statistics and Contact Routes
 app.get("/api/stats", isAuthenticated, async (req, res) => {
     try {
         const userId = req.session.userId;
+
         const totalVerified = await DocumentVerification.countDocuments({ userId });
         const successfulVerifications = await DocumentVerification.countDocuments({
             userId,
@@ -468,8 +495,7 @@ app.post("/api/contact", isAuthenticated, async (req, res) => {
     }
 });
 
-
 // --- Server Start ---
 app.listen(port, () => {
-    console.log(`🚀 Server is running on http://localhost:${port}`);
+    console.log(` Server is running on http://localhost:${port}`);
 });
