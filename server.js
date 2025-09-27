@@ -20,6 +20,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
+// --- CRITICAL FIX for Render login loop ---
 app.set('trust proxy', 1);
 
 app.use(express.json());
@@ -35,7 +36,7 @@ const sessionStore = new MongoDBStore({
     uri: MONGODB_URI,
     collection: 'sessions',
     expires: 1000 * 60 * 60 * 24 * 7, // 1 week session expiration
-    // connectionOptions are removed, as they are no longer needed
+    // Removed deprecated options like useNewUrlParser and useUnifiedTopology
 });
 
 // Handle session store errors
