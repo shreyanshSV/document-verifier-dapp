@@ -20,6 +20,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
+// --- CRITICAL FIX: Add trust proxy for live server session stability on Render/Vercel/Heroku ---
+app.set('trust proxy', 1);
+
 app.use(express.json());
 
 app.use(
