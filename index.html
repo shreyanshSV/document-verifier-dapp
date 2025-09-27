@@ -40,7 +40,6 @@
             </p>
         </div>
 
-
         <div class="bg-white rounded-2xl card-shadow p-8 md:p-12">
             <div class="grid md:grid-cols-2 gap-8 items-center">
                 <div>
@@ -65,7 +64,6 @@
                     </div>
                 </div>
 
-
                 <div class="space-y-4">
                     <button onclick="showGuestAuth()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition duration-300 transform hover:scale-105">
                         🆕 New User? Sign Up Here
@@ -84,14 +82,12 @@
     </div>
 </div>
 
-
 <div id="guestAuthPage" class="hidden min-h-screen bg-gray-100 py-8">
     <div class="max-w-md mx-auto bg-white rounded-2xl card-shadow p-8">
         <div class="text-center mb-8">
             <h2 class="text-3xl font-bold text-gray-800">Create Account</h2>
             <p class="text-gray-600 mt-2">Join Jharkhand Document Portal</p>
         </div>
-
 
         <div class="mb-6">
             <div class="flex bg-gray-100 rounded-lg p-1">
@@ -103,7 +99,6 @@
                 </button>
             </div>
         </div>
-
 
         <form id="signup-form" class="space-y-4">
             <div>
@@ -128,7 +123,6 @@
             </button>
         </form>
 
-
         <form id="signin-form" class="space-y-4 hidden">
             <div>
                 <label class="block text-gray-700 font-medium mb-2">Email Address</label>
@@ -144,15 +138,13 @@
             </button>
         </form>
 
-
         <div class="mt-6 text-center">
-            <button onclick="showGuestPage()" class="text-blue-600 hover:text-blue-800 font-medium">
+            <button onclick="showPage('guestPage')" class="text-blue-600 hover:text-blue-800 font-medium">
                 ← Back to Home
             </button>
         </div>
     </div>
 </div>
-
 
 <div id="userLoginPage" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-white rounded-2xl card-shadow p-8">
@@ -160,7 +152,6 @@
             <h2 class="text-3xl font-bold text-gray-800">Welcome Back</h2>
             <p class="text-gray-600 mt-2">Sign in to your dashboard</p>
         </div>
-
 
         <form id="user-login-form" class="space-y-6">
             <div>
@@ -184,17 +175,15 @@
             </button>
         </form>
 
-
         <div class="mt-6 text-center">
-            <button onclick="showGuestPage()" class="text-blue-600 hover:text-blue-800 font-medium">
+            <button onclick="showPage('guestPage')" class="text-blue-600 hover:text-blue-800 font-medium">
                 ← Back to Home
             </button>
         </div>
     </div>
 </div>
 
-
-<div id="dashboard" class="hidden min-h-screen bg-gray-50">
+<div id="dashboard" class="min-h-screen bg-gray-50 hidden">
     <nav class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
@@ -211,7 +200,6 @@
         </div>
     </nav>
 
-
     <div class="flex">
         <div class="w-64 bg-white shadow-sm min-h-screen">
             <div class="p-4">
@@ -221,6 +209,9 @@
                     </button>
                     <button onclick="showDashboardSection('verify')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
                         📋 Verify Documents
+                    </button>
+                    <button onclick="showDashboardSection('qrVerification')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
+                        📷 QR Verify
                     </button>
                     <button onclick="showDashboardSection('profile')" class="dashboard-nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 text-gray-700">
                         👤 Profile/Account
@@ -240,7 +231,6 @@
                 </nav>
             </div>
         </div>
-
 
         <div class="flex-1 p-8">
             <div id="homeSection" class="dashboard-section">
@@ -263,7 +253,6 @@
                     </div>
                 </div>
 
-
                 <div class="bg-white rounded-xl card-shadow p-6">
                     <h3 class="text-xl font-semibold mb-4">Quick Actions</h3>
                     <div class="grid md:grid-cols-2 gap-4">
@@ -279,14 +268,12 @@
                 </div>
             </div>
 
-
             <div id="verifySection" class="dashboard-section hidden">
                 <h2 class="text-3xl font-bold text-gray-800 mb-6">Document Verification</h2>
                 <div class="bg-white p-8 rounded-2xl card-shadow w-full max-w-md mx-auto">
                     <div class="text-center">
                         <p class="text-gray-500 mb-6">Upload a file to check its status.</p>
                     </div>
-
 
                     <form id="verify-form" class="space-y-4">
                         <div>
@@ -295,27 +282,38 @@
                                 <option>Birth Certificate</option>
                                 <option>Educational Certificate</option>
                                 <option>Property Document</option>
-                                <option>Identity Card</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Document Number</label>
-                            <input type="text" id="doc-number" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Enter document number">
+                            <input type="text" id="doc-number" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter document number">
                         </div>
+
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Upload Document</label>
-                            <div id="file-drop-area" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer">
+                            <label for="document-file" id="file-drop-area"
+                                   class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition duration-150">
                                 <div class="text-gray-400 text-4xl mb-4">📁</div>
                                 <p class="text-gray-600">Click to upload or drag and drop</p>
-                                <input type="file" id="document-file" class="hidden" accept=".pdf,.jpg,.png">
-                            </div>
+                            </label>
+                            <input type="file" id="document-file" class="hidden" accept=".pdf,.jpg,.png">
                         </div>
+
                         <button type="submit"
                                 class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                             Verify Document
                         </button>
                     </form>
 
+                    <div id="qr-code-display-area" class="hidden mt-6 p-4 bg-white rounded-lg shadow-md text-center">
+                        <h3 class="text-xl font-semibold mb-3 text-gray-800">Verification Complete!</h3>
+                        <p class="text-gray-600 mb-4">Your document has been verified. Use this QR code for quick re-verification.</p>
+                        <img id="generated-qr-code" src="" alt="Verification QR Code" class="mx-auto w-48 h-48 border border-gray-300 p-2 rounded-md">
+                        <p class="mt-3 text-sm text-gray-500">
+                            <a id="qr-code-link-text" href="#" target="_blank" class="text-blue-500 hover:underline break-all">Scan or share this link.</a>
+                        </p>
+                        <button onclick="hideQrDisplayArea()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Done</button>
+                    </div>
 
                     <div id="result" class="mt-6 p-4 text-center text-gray-700 font-semibold bg-gray-50 rounded-lg border border-gray-200">
                         Awaiting verification...
@@ -323,7 +321,38 @@
                 </div>
             </div>
 
+            <div id="qrVerificationSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Scan QR Code for Verification</h2>
+                <div class="max-w-xl mx-auto">
 
+                    <div id="scanner-controls" class="text-center space-y-4">
+                        <button onclick="initQrScanner()"
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition duration-300">
+                            Start Live QR Scanner (Requires Camera)
+                        </button>
+                        <p class="text-center text-gray-600 my-4">- OR -</p>
+                    </div>
+
+                    <div id="qr-reader" style="width: 100%; border: 1px solid #ddd; border-radius: 8px; margin-top: 15px;" class="hidden"></div>
+
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700">Upload QR Code Image</label>
+                        <input type="file" id="qr-code-file-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus: outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    </div>
+
+                    <div id="qr-scan-result" class="mt-6 p-4 text-center hidden bg-gray-50 rounded-lg">
+                        <p id="qr-result-message" class="font-medium text-gray-700"></p>
+                        <div id="qr-detailed-info" class="mt-4 text-left hidden">
+                            <p class="text-sm text-gray-600"><strong>Document Type:</strong> <span id="qr-doc-type"></span></p>
+                            <p class="text-sm text-gray-600"><strong>Status:</strong> <span id="qr-status"></span></p>
+                            <p class="text-sm text-gray-600"><strong>Submitted On:</strong> <span id="qr-submitted-at"></span></p>
+                        </div>
+                        <button id="unlock-details-btn" class="mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700" onclick="showAuthModal()">
+                            Unlock Full Details
+                        </button>
+                    </div>
+                </div>
+            </div>
             <div id="profileSection" class="dashboard-section hidden">
                 <h2 class="text-3xl font-bold text-gray-800 mb-6">Profile & Account</h2>
                 <div class="bg-white rounded-xl card-shadow p-6">
@@ -334,10 +363,19 @@
                         <div>
                             <h3 id="profile-fullname" class="text-2xl font-semibold">John Doe</h3>
                             <p id="profile-email" class="text-gray-600">john.doe@email.com</p>
+                            <p id="profile-wallet" class="text-sm text-orange-600 mt-1">Wallet: Not Linked</p>
                         </div>
                     </div>
 
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Wallet Security</h3>
+                    <div class="mb-6">
+                        <button onclick="showLinkWalletModal()"
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg transition">
+                            🔗 Link / Change MetaMask Wallet
+                        </button>
+                    </div>
 
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Personal Details</h3>
                     <form id="profile-form" class="space-y-4">
                         <div class="grid md:grid-cols-2 gap-4">
                             <div>
@@ -361,193 +399,66 @@
                 </div>
             </div>
 
+            <div id="aboutSection" class="dashboard-section hidden">...</div>
+            <div id="settingsSection" class="dashboard-section hidden">...</div>
+            <div id="contactSection" class="dashboard-section hidden">...</div>
+            <div id="helpSection" class="dashboard-section hidden">...</div>
 
-            <div id="aboutSection" class="dashboard-section hidden">
-                <h2 class="text-3xl font-bold text-gray-800 mb-6">About Jharkhand Portal</h2>
-                <div class="bg-white rounded-xl card-shadow p-6">
-                    <div class="prose max-w-none">
-                        <p class="text-lg text-gray-700 mb-6">
-                            The Jharkhand Document Verification Portal is an official government platform designed to provide secure and efficient document verification services for the citizens of Jharkhand.
-                        </p>
+        </div>
+    </div>
+</div>
 
-
-                        <h3 class="text-xl font-semibold mb-4">Our Services</h3>
-                        <ul class="space-y-2 mb-6">
-                            <li class="flex items-center space-x-3">
-                                <span class="text-green-500">✓</span>
-                                <span>Birth Certificate Verification</span>
-                            </li>
-                            <li class="flex items-center space-x-3">
-                                <span class="text-green-500">✓</span>
-                                <span>Educational Document Validation</span>
-                            </li>
-                            <li class="flex items-center space-x-3">
-                                <span class="text-green-500">✓</span>
-                                <span>Property Record Verification</span>
-                            </li>
-                            <li class="flex items-center space-x-3">
-                                <span class="text-green-500">✓</span>
-                                <span>Identity Document Authentication</span>
-                            </li>
-                        </ul>
-
-
-                        <h3 class="text-xl font-semibold mb-4">Contact Information</h3>
-                        <p class="text-gray-700">
-                            Government of Jharkhand<br>
-                            Secretariat, Ranchi - 834001<br>
-                            Phone: +91-651-2446001<br>
-                            Email: support@jharkhand.gov.in
-                        </p>
-                    </div>
-                </div>
+<div id="authModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Secure Verification (Web3 Wallet)</h3>
+            <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500">
+                    Connect your Ethereum wallet (MetaMask) and sign a message to unlock the cryptographic proof of this document.
+                </p>
+                <p id="modal-status" class="text-sm text-orange-500 mt-2 hidden"></p>
             </div>
-
-
-            <div id="settingsSection" class="dashboard-section hidden">
-                <h2 class="text-3xl font-bold text-gray-800 mb-6">Settings</h2>
-                <div class="space-y-6">
-                    <div class="bg-white rounded-xl card-shadow p-6">
-                        <h3 class="text-xl font-semibold mb-4">Account Settings</h3>
-                        <div class="space-y-4">
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-700">Email Notifications</span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="email-toggle" class="sr-only peer">
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-700">SMS Notifications</span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="sms-toggle" class="sr-only peer">
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div class="bg-white rounded-xl card-shadow p-6">
-                        <h3 class="text-xl font-semibold mb-4">Security</h3>
-                        <div class="space-y-4">
-                            <button class="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                                🔒 Change Password
-                            </button>
-                            <button class="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                                📱 Two-Factor Authentication
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
-            <div id="contactSection" class="dashboard-section hidden">
-                <h2 class="text-3xl font-bold text-gray-800 mb-6">Contact Us</h2>
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div class="bg-white rounded-xl card-shadow p-6">
-                        <h3 class="text-xl font-semibold mb-4">Get in Touch</h3>
-                        <form id="contact-form" class="space-y-4">
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2">Subject</label>
-                                <input type="text" id="contact-subject" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="Enter subject">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2">Message</label>
-                                <textarea rows="4" id="contact-message" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="Enter your message"></textarea>
-                            </div>
-                            <div id="contact-message-status" class="mt-4 text-center"></div>
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">
-                                Send Message
-                            </button>
-                        </form>
-                    </div>
-
-
-                    <div class="bg-white rounded-xl card-shadow p-6">
-                        <h3 class="text-xl font-semibold mb-4">Contact Information</h3>
-                        <div class="space-y-4">
-                            <div class="flex items-center space-x-3">
-                                <span class="text-blue-600 text-xl">📍</span>
-                                <div>
-                                    <p class="font-medium">Address</p>
-                                    <p class="text-gray-600">Secretariat, Ranchi - 834001</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <span class="text-blue-600 text-xl">📞</span>
-                                <div>
-                                    <p class="font-medium">Phone</p>
-                                    <p class="text-gray-600">+91-651-2446001</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <span class="text-blue-600 text-xl">✉️</span>
-                                <div>
-                                    <p class="font-medium">Email</p>
-                                    <p class="text-gray-600">support@jharkhand.gov.in</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <span class="text-blue-600 text-xl">🕒</span>
-                                <div>
-                                    <p class="font-medium">Office Hours</p>
-                                    <p class="text-gray-600">Mon-Fri: 9:00 AM - 6:00 PM</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
-            <div id="helpSection" class="dashboard-section hidden">
-                <h2 class="text-3xl font-bold text-gray-800 mb-6">Help & Support</h2>
-                <div class="space-y-6">
-                    <div class="bg-white rounded-xl card-shadow p-6">
-                        <h3 class="text-xl font-semibold mb-4">Frequently Asked Questions</h3>
-                        <div class="space-y-4">
-                            <div class="border-b pb-4">
-                                <button class="w-full text-left font-medium text-gray-800 hover:text-blue-600">
-                                    How do I verify my birth certificate?
-                                </button>
-                                <p class="text-gray-600 mt-2">Go to the Document Verification section, select "Birth Certificate" from the dropdown, enter your certificate number, and upload the document.</p>
-                            </div>
-                            <div class="border-b pb-4">
-                                <button class="w-full text-left font-medium text-gray-800 hover:text-blue-600">
-                                    What documents are supported?
-                                </button>
-                                <p class="text-gray-600 mt-2">We support birth certificates, educational certificates, property documents, and identity cards issued by Jharkhand government.</p>
-                            </div>
-                            <div class="border-b pb-4">
-                                <button class="w-full text-left font-medium text-gray-800 hover:text-blue-600">
-                                    How long does verification take?
-                                </button>
-                                <p class="text-gray-600 mt-2">Most verifications are completed within 24-48 hours. You'll receive an email notification once the process is complete.</p>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div class="bg-white rounded-xl card-shadow p-6">
-                        <h3 class="text-xl font-semibold mb-4">Need More Help?</h3>
-                        <div class="grid md:grid-cols-2 gap-4">
-                            <button onclick="showDashboardSection('contact')" class="p-4 border border-blue-200 rounded-lg hover:bg-blue-50 text-center">
-                                <div class="text-blue-600 text-2xl mb-2">💬</div>
-                                <div class="font-medium">Contact Support</div>
-                            </button>
-                            <button class="p-4 border border-green-200 rounded-lg hover:bg-green-50 text-center">
-                                <div class="text-green-600 text-2xl mb-2">📚</div>
-                                <div class="font-medium">User Guide</div>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            <div class="items-center px-4 py-3">
+                <button id="auth-sign-btn"
+                        class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Connect Wallet & Sign
+                </button>
+                <button onclick="hideAuthModal()"
+                        class="mt-2 px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-600">
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+<div id="linkWalletModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Link Ethereum Wallet</h3>
+            <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500">
+                    Connect your MetaMask wallet. This address will be required to unlock documents verified by you.
+                </p>
+                <p id="link-modal-status" class="text-sm text-orange-500 mt-2 hidden"></p>
+                <p id="linked-address-display" class="text-sm text-green-700 mt-2 font-mono break-all hidden"></p>
+            </div>
+            <div class="items-center px-4 py-3">
+                <button id="link-wallet-btn"
+                        class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Connect MetaMask & Link
+                </button>
+                <button onclick="hideLinkWalletModal()"
+                        class="mt-2 px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-600">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="/js/html5-qrcode.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

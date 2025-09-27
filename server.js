@@ -8,7 +8,8 @@ import { v4 as uuidv4 } from "uuid";
 import Web3 from "web3";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import Tesseract from 'tesseract.js';
+import { createWorker } from 'tesseract.js';
+import qrcode from 'qrcode';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -23,10 +24,11 @@ app.use(express.json());
 
 app.use(
     session({
-        secret: process.env.SESSION_SECRET || "DEFAULT_SECRET_KEY", // Use SESSION_SECRET from .env
+        secret: process.env.SESSION_SECRET || "DEFAULT_SECRET_KEY",
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: false },
+        // CRITICAL FIX: SameSite: 'lax' for robust localhost session handling
+        cookie: { secure: process.env.NODE_ENV === 'production', sameSite: 'lax' },
     })
 );
 
@@ -35,80 +37,68 @@ const upload = multer({ storage });
 
 app.use(express.static(__dirname));
 
-// Use MONGODB_URI from .env
-const MONGODB_URI =
-    process.env.MONGODB_URI ||
-    "mongodb+srv://shreyanshvariya2006:sVhNKGEVuWUpzwBA@genai.nlsmnrj.mongodb.net/verifier_db?retryWrites=true&w=majority&appName=genai";
+const MONGODB_URI = process.env.MONGODB_URI;
 
 mongoose
     .connect(MONGODB_URI)
     .then(() => console.log("✅ Successfully connected to MongoDB Atlas!"))
-    .catch((err) => console.error("❌ MongoDB Connection error:", err));
+    .catch((err) => console.error("❌ MongoDB Connection error:", err.message));
 
-// --- CORRECTED Blockchain Setup ---
-// Use WEB3_PROVIDER_URL from .env for Sepolia, or fallback to Ganache for local dev
+// --- Blockchain Setup ---
 const web3 = new Web3(process.env.WEB3_PROVIDER_URL || "http://127.0.0.1:7545");
-
-// Use ACCOUNT_ADDRESS from .env
 const accountAddress = process.env.ACCOUNT_ADDRESS;
-
-// Use PRIVATE_KEY from .env
-const privateKey = Buffer.from(
-    (process.env.PRIVATE_KEY) // No fallback here, as PRIVATE_KEY should always be set in .env for this logic
-        .replace(/^0x/, ""), // Remove 0x prefix if present
-    "hex"
-);
-
-// Ensure accountAddress and privateKey are loaded for debugging/initial checks
-if (!accountAddress) {
-    console.warn("⚠️ ACCOUNT_ADDRESS is not set in .env. Blockchain transactions may fail.");
-}
-if (!process.env.PRIVATE_KEY) { // Check the raw env variable
-    console.warn("⚠️ PRIVATE_KEY is not set in .env. Blockchain transactions may fail.");
-}
-
+const privateKey = process.env.PRIVATE_KEY;
 
 async function sendHashToBlockchain(fileHash) {
     try {
-        // Ensure accountAddress is valid before proceeding
         if (!web3.utils.isAddress(accountAddress)) {
             throw new Error(`Invalid account address: ${accountAddress}. Please check your .env file.`);
         }
-
+        if (!privateKey || privateKey.length < 64) {
+            throw new Error("Private key is missing or invalid. Please check your .env file.");
+        }
         const txCount = await web3.eth.getTransactionCount(accountAddress);
-        const gasPrice = await web3.eth.getGasPrice(); // Fetch current gas price dynamically
-
-        const txData = {
+        const gasPrice = await web3.eth.getGasPrice();
+        const tx = {
             nonce: web3.utils.toHex(txCount),
-            gasLimit: web3.utils.toHex(50000), // A reasonable gas limit for a simple data transaction
+            gasLimit: web3.utils.toHex(500000),
             gasPrice: web3.utils.toHex(gasPrice),
-            to: accountAddress, // Sending to own address as a record
-            value: "0x0", // No Ether being sent
-            data: web3.utils.toHex(fileHash), // Your file hash as transaction data
+            to: accountAddress,
+            value: "0x0",
+            data: web3.utils.toHex(fileHash),
         };
-
-        const signedTx = await web3.eth.accounts.signTransaction(
-            txData,
-            "0x" + privateKey.toString("hex") // Re-add 0x for signing if needed by web3.js
-        );
-
-        const receipt = await web3.eth.sendSignedTransaction(
-            signedTx.rawTransaction
-        );
-
+        const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
+        if (!signedTx || !signedTx.rawTransaction) {
+            throw new Error("Failed to sign transaction, rawTransaction is missing.");
+        }
+        const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
         console.log("✅ Blockchain Tx Successful:", receipt.transactionHash);
         return receipt.transactionHash;
     } catch (err) {
-        console.error("❌ Blockchain Tx Failed:", err.message || err); // Log specific error message
+        console.error("❌ Blockchain Tx Failed:", err.message || err);
         return null;
     }
 }
 
+// --- Tesseract.js Worker Initialization ---
+let worker;
+(async () => {
+    try {
+        worker = await createWorker('eng');
+        console.log("✅ Tesseract.js worker initialized successfully.");
+    } catch (err) {
+        console.error("❌ Error initializing Tesseract.js worker:", err.message || err);
+    }
+})();
+
+
+// --- Mongoose Schemas ---
 const userSchema = new mongoose.Schema({
     fullName: String,
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     phone: { type: String },
+    walletAddress: { type: String, unique: true, sparse: true }
 });
 const User = mongoose.model("User", userSchema, "users");
 
@@ -123,6 +113,7 @@ const AuthorizedDocument = mongoose.model(
 );
 
 const verificationSchema = new mongoose.Schema({
+    qrId: { type: String, unique: true, sparse: true },
     docId: String,
     docType: String,
     docNumber: String,
@@ -157,11 +148,17 @@ const settingsSchema = new mongoose.Schema({
 });
 const UserSettings = mongoose.model("UserSettings", settingsSchema, "user_settings");
 
+// --- Middleware ---
 function isAuthenticated(req, res, next) {
     if (req.session.userId) return next();
     res.status(401).json({ message: "Authentication required" });
 }
 
+// ----------------------------------------------------
+// --- ROUTES (Defined after all Models & Middleware) ---
+// ----------------------------------------------------
+
+// Authentication Routes
 app.post("/api/auth/signup", async (req, res) => {
     const { fullName, email, password, phone } = req.body;
     try {
@@ -174,7 +171,7 @@ app.post("/api/auth/signup", async (req, res) => {
 
         res.status(201).json({ message: "Account created successfully!" });
     } catch (error) {
-        console.error("Error during sign-up:", error);
+        console.error("Error during sign-up:", error.message);
         res.status(400).json({ message: "Email already in use or invalid data." });
     }
 });
@@ -191,20 +188,29 @@ app.post("/api/auth/signin", async (req, res) => {
         req.session.userId = user._id;
         res.json({ message: "Signed in successfully!", user: { fullName: user.fullName } });
     } catch (error) {
-        console.error("Error during sign-in:", error);
+        console.error("Error during sign-in:", error.message);
         res.status(500).json({ message: "Internal server error." });
     }
 });
 
 app.post("/api/auth/logout", (req, res) => {
-    req.session.destroy(() => res.json({ message: "Logged out successfully." }));
+    req.session.destroy((err) => {
+        if (err) {
+            console.error("Error destroying session:", err);
+            return res.status(500).json({ message: "Failed to log out." });
+        }
+        res.json({ message: "Logged out successfully." });
+    });
 });
 
+// User Profile Routes
 app.get("/api/profile", isAuthenticated, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId).select("-password");
+        if (!user) return res.status(404).json({ message: "User not found." });
         res.json(user);
-    } catch {
+    } catch (error) {
+        console.error("Error fetching profile:", error.message);
         res.status(500).json({ message: "Failed to fetch profile." });
     }
 });
@@ -212,61 +218,80 @@ app.get("/api/profile", isAuthenticated, async (req, res) => {
 app.put("/api/profile", isAuthenticated, async (req, res) => {
     try {
         const { fullName, email, phone } = req.body;
-        await User.findByIdAndUpdate(req.session.userId, { fullName, email, phone });
-        res.json({ message: "Profile updated successfully!" });
-    } catch {
-        res.status(500).json({ message: "Failed to update profile." });
-    }
-});
+        const existingUser = await User.findOne({ email });
+        if (existingUser && existingUser._id.toString() !== req.session.userId.toString()) {
+            return res.status(400).json({ message: "Email already in use by another account." });
+        }
 
-app.get("/api/settings", isAuthenticated, async (req, res) => {
-    try {
-        const settings = await UserSettings.findOne({ userId: req.session.userId });
-        res.json(settings || {});
-    } catch {
-        res.status(500).json({ message: "Failed to fetch settings." });
+        await User.findByIdAndUpdate(req.session.userId, { fullName, email, phone }, { new: true });
+        res.json({ message: "Profile updated successfully!" });
+    } catch (error) {
+        console.error("Error updating profile:", error.message);
+        res.status(500).json({ message: "Failed to update profile." });
     }
 });
 
 app.put("/api/settings", isAuthenticated, async (req, res) => {
     try {
         const { emailNotifications, smsNotifications } = req.body;
-        await UserSettings.findOneAndUpdate(
-            { userId: req.session.userId },
-            { emailNotifications, smsNotifications },
-            { new: true, upsert: true }
-        );
+        await UserSettings.findOneAndUpdate({ userId: req.session.userId }, { emailNotifications, smsNotifications }, { new: true, upsert: true });
         res.json({ message: "Settings updated successfully!" });
-    } catch {
+    } catch (error) {
+        console.error("Error updating settings:", error.message);
         res.status(500).json({ message: "Failed to update settings." });
     }
 });
 
+// --- RESTORED ROUTE: Link Wallet Address to Profile (FIXED LOCATION) ---
+app.post("/api/profile/link-wallet", isAuthenticated, async (req, res) => {
+    const { walletAddress } = req.body;
+    const userId = req.session.userId;
+
+    if (!walletAddress || !web3.utils.isAddress(walletAddress)) {
+        return res.status(400).json({ message: "Invalid wallet address provided." });
+    }
+
+    try {
+        const existingUser = await User.findOne({ walletAddress: web3.utils.toChecksumAddress(walletAddress) });
+        if (existingUser && existingUser._id.toString() !== userId.toString()) {
+            return res.status(400).json({ message: "This wallet address is already linked to another user account." });
+        }
+
+        await User.findByIdAndUpdate(userId, { walletAddress: web3.utils.toChecksumAddress(walletAddress) });
+        res.json({ message: "Wallet address linked successfully!" });
+    } catch (error) {
+        console.error("Error linking wallet:", error.message);
+        res.status(500).json({ message: "Failed to link wallet." });
+    }
+});
+
+// Document Verification Route
 app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, res) => {
+    if (!worker) {
+        return res.status(503).json({ message: "OCR service is not ready. Please try again in a moment." });
+    }
+
     const { docType, docNumber } = req.body;
     const userId = req.session.userId;
 
     if (!docType || !docNumber || !req.file) {
-        return res.status(400).json({ message: "All fields are required." });
+        return res.status(400).json({ message: "All fields are required (Document Type, Document Number, and Document File)." });
+    }
+    if (!req.file.buffer) {
+        return res.status(400).json({ message: "Uploaded file is empty or corrupted." });
     }
 
     try {
-        // Use Tesseract.recognize to process the image directly
-        const { data: { text } } = await Tesseract.recognize(
-            req.file.buffer,
-            'eng',
-            {
-                logger: m => console.log(m)
-            }
-        );
+        const { data: { text } } = await worker.recognize(req.file.buffer);
         console.log("OCR Extracted Text:", text);
 
         const fileHash = web3.utils.sha3(req.file.buffer);
-
         const docNumberFoundInText = text.includes(docNumber);
 
         let verificationStatus = "Rejected";
         let transactionHash = null;
+        let qrId = null;
+        let qrCodeDataUrl = null;
 
         if (docNumberFoundInText) {
             const isAuthorized = await AuthorizedDocument.findOne({ docNumber: docNumber });
@@ -276,8 +301,16 @@ app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, 
             }
         }
 
+        if (verificationStatus === "Verified" && transactionHash) {
+            qrId = uuidv4();
+            const baseUrl = process.env.RENDER_APP_URL || `http://localhost:${port}`;
+            const qrCodeLink = `${baseUrl}/verify-qr?id=${qrId}`;
+            qrCodeDataUrl = await qrcode.toDataURL(qrCodeLink);
+        }
+
         const newVerification = new DocumentVerification({
             docId: uuidv4(),
+            qrId: qrId,
             docType,
             docNumber,
             fileHash,
@@ -285,7 +318,6 @@ app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, 
             verificationStatus,
             userId,
         });
-
         await newVerification.save();
 
         if (verificationStatus === "Verified") {
@@ -294,21 +326,112 @@ app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, 
                 verificationStatus: "Verified",
                 fileHash,
                 transactionHash,
+                qrCodeDataUrl,
+                qrCodeLink: qrId ? `${process.env.RENDER_APP_URL || `http://localhost:${port}`}/verify-qr?id=${qrId}` : null
             });
         } else {
             res.status(404).json({
-                message: "Document not found or invalid.",
+                message: "Document not found or invalid. Verification Rejected.",
                 verificationStatus: "Rejected",
                 fileHash,
-                transactionHash,
+                transactionHash: null,
+                qrCodeDataUrl: null,
+                qrCodeLink: null
             });
         }
     } catch (error) {
-        console.error("Error during verification:", error);
-        res.status(500).json({ message: "An internal server error occurred." });
+        console.error("Error during verification:", error.message);
+        res.status(500).json({ message: "An internal server error occurred during verification." });
     }
 });
 
+// QR Code Initial Check Endpoint
+app.get("/api/qr-check", async (req, res) => {
+    const qrId = req.query.id;
+
+    if (!qrId) {
+        return res.status(400).json({ message: "QR Document ID is required." });
+    }
+
+    try {
+        const verificationRecord = await DocumentVerification.findOne({ qrId: qrId });
+
+        if (!verificationRecord) {
+            return res.status(404).json({ message: "Document verification record not found for this QR code." });
+        }
+
+        res.json({
+            verificationStatus: verificationRecord.verificationStatus,
+            docType: verificationRecord.docType,
+            submittedAt: verificationRecord.submittedAt,
+            message: "Initial verification check successful."
+        });
+
+    } catch (error) {
+        console.error("Error during QR initial check:", error.message);
+        res.status(500).json({ message: "An internal server error occurred during QR check." });
+    }
+});
+
+// FINAL: Web3 Signature Verification Endpoint with Authorization Check
+app.post("/api/qr-verify-signature", async (req, res) => {
+    const { qrId, walletAddress, signature, message } = req.body;
+
+    if (!qrId || !walletAddress || !signature || !message) {
+        return res.status(400).json({ message: "QR ID, Wallet Address, Signature, and Message are required." });
+    }
+
+    try {
+        // 1. Recover the signing address from the signature
+        const recoveredAddress = await web3.eth.accounts.recover(message, signature);
+        const recoveredAddressChecksum = web3.utils.toChecksumAddress(recoveredAddress);
+        const walletAddressChecksum = web3.utils.toChecksumAddress(walletAddress);
+
+        // 2. Signature Validation (Crypto Proof)
+        if (recoveredAddressChecksum !== walletAddressChecksum) {
+            return res.status(401).json({ message: "Invalid cryptographic signature." });
+        }
+
+        // 3. Retrieve Document and Owner Information
+        const verificationRecord = await DocumentVerification.findOne({ qrId: qrId });
+
+        if (!verificationRecord) {
+            return res.status(404).json({ message: "Document record not found." });
+        }
+
+        const owner = await User.findById(verificationRecord.userId);
+
+        if (!owner || !owner.walletAddress) {
+            // Document owner does not have a wallet linked
+            return res.status(403).json({ message: "Access Denied: The document owner has not linked a wallet for security verification." });
+        }
+
+        // 4. FINAL AUTHORIZATION CHECK
+        const ownerWalletChecksum = web3.utils.toChecksumAddress(owner.walletAddress);
+
+        if (recoveredAddressChecksum !== ownerWalletChecksum) {
+            console.warn(`ACCESS DENIED: Wallet ${recoveredAddressChecksum} tried to unlock document owned by ${ownerWalletChecksum}`);
+            return res.status(403).json({ message: "Access Denied: The signing wallet does not match the registered document owner." });
+        }
+
+        // 5. Success! Return Full Sensitive Details
+        res.json({
+            message: "Signature verified. Full details revealed.",
+            docType: verificationRecord.docType,
+            docNumber: verificationRecord.docNumber,
+            fileHash: verificationRecord.fileHash,
+            transactionHash: verificationRecord.transactionHash,
+            verificationStatus: verificationRecord.verificationStatus,
+        });
+
+    } catch (error) {
+        console.error("Error during signature verification:", error.message || error);
+        res.status(500).json({ message: "An internal server error occurred during signature verification." });
+    }
+});
+
+
+// Statistics and Contact Routes
 app.get("/api/stats", isAuthenticated, async (req, res) => {
     try {
         const userId = req.session.userId;
@@ -323,7 +446,8 @@ app.get("/api/stats", isAuthenticated, async (req, res) => {
         });
 
         res.json({ totalVerified, successfulVerifications, pendingRequests });
-    } catch {
+    } catch (error) {
+        console.error("Error fetching statistics:", error.message);
         res.status(500).json({ message: "Failed to fetch statistics." });
     }
 });
@@ -338,11 +462,14 @@ app.post("/api/contact", isAuthenticated, async (req, res) => {
         });
         await contactMessage.save();
         res.status(201).json({ message: "Message sent successfully!" });
-    } catch {
+    } catch (error) {
+        console.error("Error sending contact message:", error.message);
         res.status(500).json({ message: "Failed to send message." });
     }
 });
 
+
+// --- Server Start ---
 app.listen(port, () => {
     console.log(`🚀 Server is running on http://localhost:${port}`);
 });
