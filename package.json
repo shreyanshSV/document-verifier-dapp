@@ -13,7 +13,9 @@
   "dependencies": {
     "@ethereumjs/common": "^2.6.5",
     "@ethereumjs/tx": "^4.2.0",
+    "@pinata/sdk": "^2.1.0",
     "bcrypt": "^6.0.0",
+    "connect-mongodb-session": "^5.0.0",
     "dotenv": "^17.2.2",
     "ethereumjs-tx": "^2.1.2",
     "ethereumjs-util": "^7.1.5",
@@ -24,6 +26,7 @@
     "multer": "^2.0.2",
     "qrcode": "^1.5.4",
     "react-router-dom": "^7.8.2",
+    "stream": "^0.0.3",
     "tesseract.js": "^6.0.1",
     "uuid": "^12.0.0",
     "web3": "^4.16.0"

@@ -292,7 +292,7 @@
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Upload Document</label>
                             <label for="document-file" id="file-drop-area"
-                                   class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition duration-150">
+                                   class="block w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition duration-150">
                                 <div class="text-gray-400 text-4xl mb-4">📁</div>
                                 <p class="text-gray-600">Click to upload or drag and drop</p>
                             </label>
@@ -399,10 +399,118 @@
                 </div>
             </div>
 
-            <div id="aboutSection" class="dashboard-section hidden">...</div>
-            <div id="settingsSection" class="dashboard-section hidden">...</div>
-            <div id="contactSection" class="dashboard-section hidden">...</div>
-            <div id="helpSection" class="dashboard-section hidden">...</div>
+            <div id="aboutSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">About Jharkhand Portal</h2>
+                <div class="bg-white p-6 rounded-xl card-shadow">
+                    <div class="space-y-6">
+                        <p class="text-lg text-gray-700">
+                            The Jharkhand Document Verification Portal is an official government platform designed to provide secure and efficient document verification services for the citizens of Jharkhand.
+                        </p>
+
+                        <h3 class="text-xl font-semibold text-gray-800 border-b pb-2">Our Services</h3>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                            <li>Birth Certificate Verification</li>
+                            <li>Educational Document Validation</li>
+                            <li>Property Record Verification</li>
+                            <li>Identity Document Authentication</li>
+                        </ul>
+
+                        <h3 class="text-xl font-semibold text-gray-800 border-b pb-2">Official Contact</h3>
+                        <div class="text-gray-700 space-y-1">
+                            <p>Government of Jharkhand</p>
+                            <p>Secretariat, Ranchi - 834001</p>
+                            <p>Phone: +91-651-2446001</p>
+                            <p>Email: support@jharkhand.gov.in</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="settingsSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Settings</h2>
+                <div class="bg-white p-6 rounded-xl card-shadow space-y-6">
+                    <div class="border p-4 rounded-lg bg-gray-50">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-3">Account Settings</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center justify-between">
+                                <span class="text-gray-700">Email Notifications</span>
+                                <input id="email-toggle" type="checkbox" class="h-5 w-10 rounded-full appearance-none bg-gray-300 checked:bg-blue-600 transition cursor-pointer" />
+                            </label>
+                            <label class="flex items-center justify-between">
+                                <span class="text-gray-700">SMS Notifications</span>
+                                <input id="sms-toggle" type="checkbox" class="h-5 w-10 rounded-full appearance-none bg-gray-300 checked:bg-blue-600 transition cursor-pointer" />
+                            </label>
+                        </div>
+                    </div>
+                    <div class="border p-4 rounded-lg bg-gray-50">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-3">Security (Action Items)</h3>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                            <li>Change Password</li>
+                            <li>Two-Factor Authentication</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div id="contactSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Contact Us</h2>
+                <div class="bg-white p-6 rounded-xl card-shadow">
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="text-xl font-semibold mb-3">Get in Touch</h3>
+                            <form id="contact-form" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Subject</label>
+                                    <input id="contact-subject" type="text" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Subject" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Message</label>
+                                    <textarea id="contact-message" rows="5" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Your message"></textarea>
+                                </div>
+                                <div id="contact-message-status" class="text-sm"></div>
+                                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg">Send Message</button>
+                            </form>
+                        </div>
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <h3 class="text-xl font-semibold mb-3">Contact Information</h3>
+                            <ul class="space-y-3 text-gray-700">
+                                <li><span class="font-medium">Address:</span> Secretariat, Ranchi - 834001</li>
+                                <li><span class="font-medium">Phone:</span> +91-651-2446001</li>
+                                <li><span class="font-medium">Email:</span> support@jharkhand.gov.in</li>
+                                <li><span class="font-medium">Office Hours:</span> Mon-Fri: 9:00 AM - 6:00 PM</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="helpSection" class="dashboard-section hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Help & Support</h2>
+                <div class="bg-white p-6 rounded-xl card-shadow">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3 border-b pb-2">Frequently Asked Questions</h3>
+                    <div class="space-y-4">
+                        <div class="p-3 border rounded-lg bg-gray-50">
+                            <p class="font-medium text-gray-800">1. How do I verify my birth certificate?</p>
+                            <p class="text-gray-600 mt-1">Go to the Document Verification section, select "Birth Certificate" from the dropdown, enter your certificate number, and upload the document.</p>
+                        </div>
+                        <div class="p-3 border rounded-lg bg-gray-50">
+                            <p class="font-medium text-gray-800">2. What documents are supported?</p>
+                            <p class="text-gray-600 mt-1">We support birth certificates, educational certificates, property documents, and identity cards issued by Jharkhand government.</p>
+                        </div>
+                        <div class="p-3 border rounded-lg bg-gray-50">
+                            <p class="font-medium text-gray-800">3. How long does verification take?</p>
+                            <p class="text-gray-600 mt-1">Most verifications are completed within 24-48 hours. You'll receive an email notification once the process is complete.</p>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold text-gray-800 mt-6 mb-3 border-b pb-2">Support Options</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
+                        <li>
+                            <button onclick="showDashboardSection('contact')" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Contact Support</button>
+                        </li>
+                        <li>
+                            <a href="#" class="text-blue-600 hover:underline">User Guide</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
 
         </div>
     </div>

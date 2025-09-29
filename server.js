@@ -11,8 +11,10 @@ import dotenv from "dotenv";
 import { createWorker } from 'tesseract.js';
 import qrcode from 'qrcode';
 import MongoStore from "connect-mongodb-session";
+import pinataSDK from '@pinata/sdk';
+import stream from 'stream';
 
-// Load environment variables from .env file
+// Load environment variables
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,26 +22,30 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- CRITICAL FIX for Render login loop ---
 app.set('trust proxy', 1);
 
 app.use(express.json());
 
-// Get credentials from your .env file
-const MONGODB_URI = "mongodb+srv://shreyanshvariya2006:sVhNKGEVuWUpzwBA@genai.nlsmnrj.mongodb.net/verifier_db?retryWrites=true&w=majority&appName=genai";
-const SESSION_SECRET = process.env.SESSION_SECRET || "YOUR_VERY_LONG_AND_RANDOM_SECRET_KEY_HERE_AS_ITS_NOT_ON_GITHUB";
+// --- CRITICAL FIX: Reading MONGODB_URI from environment ---
+const MONGODB_URI = process.env.MONGODB_URI;
+// --- Reading PINATA keys from environment ---
+const PINATA_API_KEY = process.env.PINATA_API_KEY;
+const PINATA_SECRET_API_KEY = process.env.PINATA_SECRET_API_KEY;
+const SESSION_SECRET = process.env.SESSION_SECRET || "DEFAULT_SECRET_KEY";
+
+// --- PINATA SETUP ---
+const pinata = new pinataSDK(PINATA_API_KEY, PINATA_SECRET_API_KEY);
+// -----------------------------------------------------------------
 
 
-// --- SESSION STORE FIX: Replace MemoryStore with MongoDBStore (Removed deprecated options) ---
+// --- SESSION STORE FIX: MongoDBStore ---
 const MongoDBStore = MongoStore(session);
 const sessionStore = new MongoDBStore({
     uri: MONGODB_URI,
     collection: 'sessions',
-    expires: 1000 * 60 * 60 * 24 * 7, // 1 week session expiration
-    // Removed deprecated options like useNewUrlParser and useUnifiedTopology
+    expires: 1000 * 60 * 60 * 24 * 7,
 });
 
-// Handle session store errors
 sessionStore.on('error', function(error) {
     console.error("Session Store Error:", error);
 });
@@ -49,7 +55,7 @@ app.use(
         secret: SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
-        store: sessionStore, // <-- Using MongoDB store
+        store: sessionStore,
         cookie: {
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -63,13 +69,12 @@ const upload = multer({ storage });
 
 app.use(express.static(__dirname));
 
-// --- MONGOOSE CONNECTION (Removed deprecated options) ---
 mongoose
     .connect(MONGODB_URI)
     .then(() => console.log(" Successfully connected to MongoDB Atlas!"))
     .catch((err) => console.error(" MongoDB Connection error:", err.message));
 
-// --- Blockchain Setup ---
+// --- Blockchain Setup (omitted for brevity) ---
 const web3 = new Web3(process.env.WEB3_PROVIDER_URL || "http://127.0.0.1:7545");
 const accountAddress = process.env.ACCOUNT_ADDRESS;
 const privateKey = process.env.PRIVATE_KEY;
@@ -84,12 +89,14 @@ async function sendHashToBlockchain(fileHash) {
         }
 
         const txCount = await web3.eth.getTransactionCount(accountAddress);
-        const gasPrice = await web3.eth.getGasPrice();
+        const networkGasPrice = await web3.eth.getGasPrice();
+
+        const increasedGasPrice = BigInt(networkGasPrice) * BigInt(125) / BigInt(100);
 
         const tx = {
             nonce: web3.utils.toHex(txCount),
             gasLimit: web3.utils.toHex(500000),
-            gasPrice: web3.utils.toHex(gasPrice),
+            gasPrice: web3.utils.toHex(increasedGasPrice),
             to: accountAddress,
             value: "0x0",
             data: web3.utils.toHex(fileHash),
@@ -108,8 +115,7 @@ async function sendHashToBlockchain(fileHash) {
         return null;
     }
 }
-
-// --- Tesseract.js Worker Initialization ---
+// --- Tesseract.js Worker Initialization (omitted for brevity) ---
 let worker;
 (async () => {
     try {
@@ -150,6 +156,7 @@ const verificationSchema = new mongoose.Schema({
     verificationStatus: { type: String, default: "Pending" },
     userId: mongoose.Schema.Types.ObjectId,
     submittedAt: { type: Date, default: Date.now },
+    documentCID: String, // <-- Stores the IPFS Content Identifier
 });
 const DocumentVerification = mongoose.model(
     "DocumentVerification",
@@ -176,17 +183,17 @@ const settingsSchema = new mongoose.Schema({
 });
 const UserSettings = mongoose.model("UserSettings", settingsSchema, "user_settings");
 
-// --- Middleware ---
+// --- Middleware (omitted for brevity) ---
 function isAuthenticated(req, res, next) {
     if (req.session.userId) return next();
     res.status(401).json({ message: "Authentication required" });
 }
 
 // ----------------------------------------------------
-// --- ROUTES ---
+// --- ROUTES (Defined after all Models & Middleware) ---
 // ----------------------------------------------------
 
-// Authentication Routes
+// Authentication Routes (omitted for brevity)
 app.post("/api/auth/signup", async (req, res) => {
     const { fullName, email, password, phone } = req.body;
     try {
@@ -231,10 +238,9 @@ app.post("/api/auth/logout", (req, res) => {
     });
 });
 
-// User Profile Routes
+// User Profile Routes (omitted for brevity)
 app.get("/api/profile", isAuthenticated, async (req, res) => {
     try {
-        // Find user but exclude password field
         const user = await User.findById(req.session.userId).select("-password");
         if (!user) return res.status(404).json({ message: "User not found." });
         res.json(user);
@@ -272,7 +278,7 @@ app.put("/api/settings", isAuthenticated, async (req, res) => {
     }
 });
 
-// --- Link Wallet Address to Profile ---
+// --- RESTORED ROUTE: Link Wallet Address to Profile (FIXED LOCATION) ---
 app.post("/api/profile/link-wallet", isAuthenticated, async (req, res) => {
     const { walletAddress } = req.body;
     const userId = req.session.userId;
@@ -295,7 +301,7 @@ app.post("/api/profile/link-wallet", isAuthenticated, async (req, res) => {
     }
 });
 
-// Document Verification Route
+// Document Verification Route (omitted for brevity)
 app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, res) => {
     if (!worker) {
         return res.status(503).json({ message: "OCR service is not ready. Please try again in a moment." });
@@ -311,42 +317,114 @@ app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, 
         return res.status(400).json({ message: "Uploaded file is empty or corrupted." });
     }
 
+    let documentCID = null;
+    let verificationStatus = "Rejected";
+    let transactionHash = null;
+    let qrId = null;
+    let qrCodeDataUrl = null;
+    let qrLink = null;
+
     try {
+        // =================================================================
+        // *** FIX: STEP 1 - CHECK FOR EXISTING VERIFIED RECORD ***
+        // =================================================================
+        const existingRecord = await DocumentVerification.findOne({
+            docNumber: docNumber,
+            verificationStatus: "Verified"
+        });
+
+        if (existingRecord) {
+            console.log("Existing verified record found. Regenerating QR Code Image.");
+
+            const existingQrId = existingRecord.qrId;
+            const existingQrLink = existingQrId ?
+                `${process.env.RENDER_APP_URL || `http://localhost:${port}`}/verify-qr?id=${existingQrId}`
+                : null;
+
+            let existingQrCodeDataUrl = null;
+
+            // --- CRITICAL FIX: Regenerate the QR Code Image Data URL ---
+            if (existingQrLink) {
+                existingQrCodeDataUrl = await qrcode.toDataURL(existingQrLink);
+                console.log("QR Code Image Regenerated Successfully.");
+            }
+            // -----------------------------------------------------------
+
+            return res.json({
+                message: "Document Already Verified!",
+                verificationStatus: "Verified",
+                fileHash: existingRecord.fileHash,
+                transactionHash: existingRecord.transactionHash,
+                documentCID: existingRecord.documentCID,
+                qrCodeLink: existingQrLink,       // Pass the permanent link
+                qrCodeDataUrl: existingQrCodeDataUrl, // <-- PASS THE REGENERATED IMAGE DATA
+            });
+        }
+        // =================================================================
+
+        // --- STEP 2: PROCEED WITH NEW VERIFICATION (If no existing record found) ---
+
+        // --- 2.1 OCR AND HASHING ---
         const { data: { text } } = await worker.recognize(req.file.buffer);
         console.log("OCR Extracted Text:", text);
 
         const fileHash = web3.utils.sha3(req.file.buffer);
-        const docNumberFoundInText = text.includes(docNumber);
 
-        let verificationStatus = "Rejected";
-        let transactionHash = null;
-        let qrId = null;
-        let qrCodeDataUrl = null;
+        // --- 2.2 IPFS UPLOAD LOGIC ---
+        if (pinata && PINATA_API_KEY && PINATA_SECRET_API_KEY) {
+            const readableStreamForFile = stream.Readable.from(req.file.buffer);
+            readableStreamForFile.path = req.file.originalname;
+
+            const pinataResponse = await pinata.pinFileToIPFS(readableStreamForFile, {
+                pinataMetadata: {
+                    name: `Verified_Doc_${docNumber}`,
+                    keyvalues: { docNumber: docNumber, userId: userId.toString() }
+                }
+            });
+
+            documentCID = pinataResponse.IpfsHash;
+            console.log("IPFS Upload Successful. CID:", documentCID);
+        } else {
+            console.error("Pinata SDK not fully initialized (check environment keys). Document CID will be null.");
+        }
+
+        // --- 2.3 AUTHORIZATION AND BLOCKCHAIN ---
+        const docNumberFoundInText = text.includes(docNumber);
 
         if (docNumberFoundInText) {
             const isAuthorized = await AuthorizedDocument.findOne({ docNumber: docNumber });
             if (isAuthorized) {
                 verificationStatus = "Verified";
-                transactionHash = await sendHashToBlockchain(fileHash);
+
+                if (documentCID) {
+                    transactionHash = await sendHashToBlockchain(fileHash);
+                } else {
+                    verificationStatus = "Rejected";
+                    console.error("Verification failed: Document could not be pinned to IPFS.");
+                }
             }
         }
 
-        if (verificationStatus === "Verified" && transactionHash) {
-            qrId = uuidv4();
+        // --- 2.4 FINAL RECORD AND QR GENERATION ---
+        if (verificationStatus === "Verified" && transactionHash && documentCID) {
+            qrId = uuidv4(); // Generate new QR ID only for a new successful verification
             const baseUrl = process.env.RENDER_APP_URL || `http://localhost:${port}`;
-            const qrCodeLink = `${baseUrl}/verify-qr?id=${qrId}`;
-            qrCodeDataUrl = await qrcode.toDataURL(qrCodeLink);
+            qrLink = `${baseUrl}/verify-qr?id=${qrId}`;
+            qrCodeDataUrl = await qrcode.toDataURL(qrLink);
+        } else {
+            verificationStatus = "Rejected";
         }
 
         const newVerification = new DocumentVerification({
             docId: uuidv4(),
-            qrId: qrId,
+            qrId: qrId, // Will be null or the newly generated ID
             docType,
             docNumber,
             fileHash,
             transactionHash,
             verificationStatus,
             userId,
+            documentCID: documentCID,
         });
         await newVerification.save();
 
@@ -357,14 +435,16 @@ app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, 
                 fileHash,
                 transactionHash,
                 qrCodeDataUrl,
-                qrCodeLink: qrId ? `${process.env.RENDER_APP_URL || `http://localhost:${port}`}/verify-qr?id=${qrId}` : null
+                documentCID: documentCID,
+                qrCodeLink: qrLink,
             });
         } else {
             res.status(404).json({
                 message: "Document not found or invalid. Verification Rejected.",
                 verificationStatus: "Rejected",
-                fileHash,
+                fileHash: newVerification.fileHash, // Return hash even if rejected for debugging
                 transactionHash: null,
+                documentCID: null,
                 qrCodeDataUrl: null,
                 qrCodeLink: null
             });
@@ -372,11 +452,15 @@ app.post("/api/verify", isAuthenticated, upload.single("document"), async (req, 
 
     } catch (error) {
         console.error("Error during verification:", error.message);
-        res.status(500).json({ message: "An internal server error occurred during verification." });
+        if (error.message && error.message.includes('API Key') || error.message.includes('pinFileToIPFS')) {
+            return res.status(500).json({ message: "Verification failed. Pinata API Keys may be incorrect or missing from your .env/Render environment." });
+        }
+        res.status(500).json({ message: `An internal server error occurred during verification: ${error.message}` });
     }
 });
 
-// QR Code Initial Check Endpoint
+
+// QR Code Initial Check Endpoint (omitted for brevity)
 app.get("/api/qr-check", async (req, res) => {
     const qrId = req.query.id;
     if (!qrId) {
@@ -411,17 +495,14 @@ app.post("/api/qr-verify-signature", async (req, res) => {
     }
 
     try {
-        // 1. Recover the signing address from the signature
         const recoveredAddress = await web3.eth.accounts.recover(message, signature);
         const recoveredAddressChecksum = web3.utils.toChecksumAddress(recoveredAddress);
         const walletAddressChecksum = web3.utils.toChecksumAddress(walletAddress);
 
-        // 2. Signature Validation (Crypto Proof)
         if (recoveredAddressChecksum !== walletAddressChecksum) {
             return res.status(401).json({ message: "Invalid cryptographic signature." });
         }
 
-        // 3. Retrieve Document and Owner Information
         const verificationRecord = await DocumentVerification.findOne({ qrId: qrId });
         if (!verificationRecord) {
             return res.status(404).json({ message: "Document record not found." });
@@ -430,11 +511,9 @@ app.post("/api/qr-verify-signature", async (req, res) => {
         const owner = await User.findById(verificationRecord.userId);
 
         if (!owner || !owner.walletAddress) {
-            // Document owner does not have a wallet linked
             return res.status(403).json({ message: "Access Denied: The document owner has not linked a wallet for security verification." });
         }
 
-        // 4. FINAL AUTHORIZATION CHECK
         const ownerWalletChecksum = web3.utils.toChecksumAddress(owner.walletAddress);
 
         if (recoveredAddressChecksum !== ownerWalletChecksum) {
@@ -442,7 +521,6 @@ app.post("/api/qr-verify-signature", async (req, res) => {
             return res.status(403).json({ message: "Access Denied: The signing wallet does not match the registered document owner." });
         }
 
-        // 5. Success! Return Full Sensitive Details
         res.json({
             message: "Signature verified. Full details revealed.",
             docType: verificationRecord.docType,
@@ -450,6 +528,7 @@ app.post("/api/qr-verify-signature", async (req, res) => {
             fileHash: verificationRecord.fileHash,
             transactionHash: verificationRecord.transactionHash,
             verificationStatus: verificationRecord.verificationStatus,
+            documentCID: verificationRecord.documentCID, // <-- CRITICAL: Return CID to client
         });
 
     } catch (error) {
@@ -458,7 +537,7 @@ app.post("/api/qr-verify-signature", async (req, res) => {
     }
 });
 
-// Statistics and Contact Routes
+// Statistics and Contact Routes (omitted for brevity)
 app.get("/api/stats", isAuthenticated, async (req, res) => {
     try {
         const userId = req.session.userId;
@@ -495,6 +574,7 @@ app.post("/api/contact", isAuthenticated, async (req, res) => {
         res.status(500).json({ message: "Failed to send message." });
     }
 });
+
 
 // --- Server Start ---
 app.listen(port, () => {

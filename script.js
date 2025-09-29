@@ -5,16 +5,15 @@ const API_URL = '/api';
 const state = {
     user: null,
     isAuthenticated: false,
-    // Client-side flag for persistent authentication state check
     isLoggedInClient: localStorage.getItem('isLoggedInClient') === 'true'
 };
 
 // --- QR Code Scanning Global Variables ---
 let html5QrCode = null;
 let currentQrScanId = null;
-let droppedFile = null; // Global variable to hold file from drag-and-drop
+let droppedFile = null;
 
-// --- DOM Elements (Placeholder declaration - populated in DOMContentLoaded) ---
+// --- DOM Elements (Placeholder objects - populated inside DOMContentLoaded) ---
 const pages = {};
 const forms = {};
 const messages = {};
@@ -22,24 +21,32 @@ const profileInputs = {};
 const statsElements = {};
 const settingsToggles = {};
 
-
 // ----------------------------------------------------------------------
-// --- I. CORE GLOBAL/WINDOW FUNCTIONS (DEFINED IMMEDIATELY FOR HTML) ---
+// --- I. CORE GLOBAL/WINDOW FUNCTIONS (DEFINED OUTSIDE DOMContentLoaded FOR HTML) ---
 // ----------------------------------------------------------------------
 
 function hideAllPages() {
-    Object.values(pages).forEach(page => page.classList.add('hidden'));
+    Object.values(pages).forEach(page => {
+        if (page) page.classList.add('hidden');
+    });
 }
 
 function showPage(pageId) {
     hideAllPages();
-    pages[pageId].classList.remove('hidden');
-    pages[pageId].classList.add('fade-in');
+    const page = pages[pageId] || document.getElementById(pageId);
+    if (page) {
+        page.classList.remove('hidden');
+        page.classList.add('fade-in');
+    } else {
+        console.error("Page element not yet available:", pageId);
+    }
 }
 
 function showMessage(element, message, type = 'success') {
-    element.textContent = message;
-    element.className = `mt-4 text-center font-medium ${type === 'success' ? 'text-green-600' : 'text-red-600'}`;
+    if (element) {
+        element.textContent = message;
+        element.className = `mt-4 text-center font-medium ${type === 'success' ? 'text-green-600' : 'text-red-600'}`;
+    }
 }
 
 function getWeb3Provider() {
@@ -49,43 +56,61 @@ function getWeb3Provider() {
     return null;
 }
 
-// --- Modal Functions (CRITICAL FIX: Explicitly defined on window) ---
-
+// --- Modal Functions (Explicitly defined on window to prevent crash) ---
 window.showAuthModal = function() {
-    document.getElementById('authModal').classList.remove('hidden');
-    document.getElementById('modal-status').textContent = "Click the button below to connect your wallet and sign the proof message.";
-    document.getElementById('modal-status').classList.remove('hidden', 'text-red-500', 'text-green-500');
+    const el = document.getElementById('authModal');
+    if (el) el.classList.remove('hidden');
+    const status = document.getElementById('modal-status');
+    if (status) {
+        status.textContent = "Click the button below to connect your wallet and sign the proof message.";
+        status.classList.remove('hidden', 'text-red-500', 'text-green-500');
+    }
 };
 
 window.hideAuthModal = function() {
-    document.getElementById('authModal').classList.add('hidden');
+    const el = document.getElementById('authModal');
+    if (el) el.classList.add('hidden');
 };
 
 window.showLinkWalletModal = function() {
-    document.getElementById('linkWalletModal').classList.remove('hidden');
-    document.getElementById('link-modal-status').classList.add('hidden');
-    document.getElementById('linked-address-display').classList.add('hidden');
+    const el = document.getElementById('linkWalletModal');
+    if (el) el.classList.remove('hidden');
+    const s = document.getElementById('link-modal-status');
+    if (s) s.classList.add('hidden');
+    const linked = document.getElementById('linked-address-display');
+    if (linked) linked.classList.add('hidden');
 };
 
 window.hideLinkWalletModal = function() {
-    document.getElementById('linkWalletModal').classList.add('hidden');
+    const el = document.getElementById('linkWalletModal');
+    if (el) el.classList.add('hidden');
     if (typeof fetchProfile === 'function') fetchProfile();
 };
 
-// --- Dashboard Functions ---
+// --- Guest Navigation Helpers (CRITICAL FIX: Defined outside DOMContentLoaded) ---
+function showGuestAuth() {
+    showPage('guestAuthPage');
+    if(window.switchGuestTab) window.switchGuestTab('signup');
+}
 
+function showUserLogin() {
+    showPage('userLoginPage');
+}
+
+// --- Dashboard Functions ---
 function showDashboardSection(section) {
     const sections = document.querySelectorAll('.dashboard-section');
     sections.forEach(s => s.classList.add('hidden'));
 
-    // Stop QR scanner if not on QR verification section
     if (html5QrCode && html5QrCode.isScanning && section !== 'qrVerification') {
-        html5QrCode.stop().then(ignore => {}).catch(err =>
-            console.warn("QR scanner stop failed:", err));
+        html5QrCode.stop().then(ignore => {}).catch(err => console.warn("QR scanner stop failed:", err));
     }
 
-    document.getElementById(`${section}Section`).classList.remove('hidden');
-    document.getElementById(`${section}Section`).classList.add('fade-in');
+    const sectionEl = document.getElementById(`${section}Section`);
+    if (sectionEl) {
+        sectionEl.classList.remove('hidden');
+        sectionEl.classList.add('fade-in');
+    }
 
     const navButtons = document.querySelectorAll('.dashboard-nav-btn');
     navButtons.forEach(btn => {
@@ -99,13 +124,11 @@ function showDashboardSection(section) {
         clickedButton.classList.remove('hover:bg-gray-50', 'text-gray-700');
     }
 
-    // FIX: Initialize scanner immediately when entering QR page (isSilent=true)
     if (section === 'qrVerification') {
         const qrReaderDiv = document.getElementById('qr-reader');
         const startBtn = document.getElementById('start-scanner-btn');
         const qrScanResultDiv = document.getElementById('qr-scan-result');
 
-        // Hide scanner, show activation button
         if(qrReaderDiv) qrReaderDiv.classList.add('hidden');
         if(startBtn) startBtn.classList.remove('hidden');
         if(qrScanResultDiv) qrScanResultDiv.classList.add('hidden');
@@ -116,29 +139,16 @@ function showDashboardSection(section) {
     }
 }
 
-// --- Guest Navigation Helpers ---
-
-function showGuestAuth() {
-    showPage('guestAuthPage');
-    if(window.switchGuestTab) window.switchGuestTab('signup');
-}
-
-function showUserLogin() {
-    showPage('userLoginPage');
-}
-
 // --- Logout Function ---
-
 async function handleLogout() {
     if (confirm('Are you sure you want to logout?')) {
         try {
             const response = await fetch(`${API_URL}/auth/logout`, { method: 'POST' });
             const data = await response.json();
-
             if (response.ok) {
                 state.isAuthenticated = false;
                 state.user = null;
-                localStorage.setItem('isLoggedInClient', 'false'); // NEW: Clear client flag
+                localStorage.setItem('isLoggedInClient', 'false');
                 window.showPage('guestPage');
             } else {
                 alert('Logout failed. Please try again.');
@@ -150,7 +160,6 @@ async function handleLogout() {
     }
 }
 
-
 // ----------------------------------------------------
 // --- II. DATA FETCHERS & UTILITIES ---
 // ----------------------------------------------------
@@ -160,9 +169,9 @@ async function fetchStats() {
         const response = await fetch(`${API_URL}/stats`);
         if (response.ok) {
             const data = await response.json();
-            statsElements.totalVerified.textContent = data.totalVerified;
-            statsElements.successfulVerifications.textContent = data.successfulVerifications;
-            statsElements.pendingRequests.textContent = data.pendingRequests;
+            if (statsElements.totalVerified) statsElements.totalVerified.textContent = data.totalVerified;
+            if (statsElements.successfulVerifications) statsElements.successfulVerifications.textContent = data.successfulVerifications;
+            if (statsElements.pendingRequests) statsElements.pendingRequests.textContent = data.pendingRequests;
         }
     } catch (error) {
         console.error('Failed to fetch stats:', error);
@@ -173,7 +182,6 @@ async function fetchProfile() {
     try {
         const response = await fetch(`${API_URL}/profile`);
 
-        // FIX: Check for 401 Unauthorized status explicitly to handle session loss
         if (response.status === 401) {
             state.isAuthenticated = false;
             localStorage.setItem('isLoggedInClient', 'false');
@@ -185,23 +193,28 @@ async function fetchProfile() {
             const user = await response.json();
             state.user = user;
 
-            document.getElementById('welcome-message').textContent = `Welcome, ${user.fullName}`;
-            profileInputs.fullName.value = user.fullName || '';
-            profileInputs.email.value = user.email || '';
-            profileInputs.phone.value = user.phone || '';
-            document.getElementById('profile-fullname').textContent = user.fullName;
-            document.getElementById('profile-email').textContent = user.email;
+            const welcome = document.getElementById('welcome-message');
+            if (welcome) welcome.textContent = `Welcome, ${user.fullName}`;
 
-            // Display Wallet Status
+            if (profileInputs.fullName) profileInputs.fullName.value = user.fullName || '';
+            if (profileInputs.email) profileInputs.email.value = user.email || '';
+            if (profileInputs.phone) profileInputs.phone.value = user.phone || '';
+
+            const pfFull = document.getElementById('profile-fullname');
+            const pfEmail = document.getElementById('profile-email');
+            if (pfFull) pfFull.textContent = user.fullName;
+            if (pfEmail) pfEmail.textContent = user.email;
+
             const walletDisplay = document.getElementById('profile-wallet');
-            const walletAddress = user.walletAddress;
-
-            if (walletAddress) {
-                walletDisplay.textContent = `Wallet: Linked (${walletAddress.substring(0, 6)}...${walletAddress.substring(38)})`;
-                walletDisplay.className = 'text-sm text-green-600 mt-1';
-            } else {
-                walletDisplay.textContent = 'Wallet: NOT LINKED (REQUIRED for security)';
-                walletDisplay.className = 'text-sm text-red-600 mt-1';
+            if (walletDisplay) {
+                const walletAddress = user.walletAddress;
+                if (walletAddress) {
+                    walletDisplay.textContent = `Wallet: Linked (${walletAddress.substring(0, 6)}...${walletAddress.substring(38)})`;
+                    walletDisplay.className = 'text-sm text-green-600 mt-1';
+                } else {
+                    walletDisplay.textContent = 'Wallet: NOT LINKED (REQUIRED for security)';
+                    walletDisplay.className = 'text-sm text-red-600 mt-1';
+                }
             }
         }
     } catch (error) {
@@ -214,8 +227,8 @@ async function fetchSettings() {
         const response = await fetch(`${API_URL}/settings`);
         if (response.ok) {
             const settings = await response.json();
-            settingsToggles.email.checked = settings.emailNotifications;
-            settingsToggles.sms.checked = settings.smsNotifications;
+            if (settingsToggles.email) settingsToggles.email.checked = settings.emailNotifications;
+            if (settingsToggles.sms) settingsToggles.sms.checked = settings.smsNotifications;
         }
     } catch (error) {
         console.error('Failed to fetch settings:', error);
@@ -223,11 +236,13 @@ async function fetchSettings() {
 }
 
 function hideQrDisplayArea() {
-    document.getElementById('qr-code-display-area').classList.add('hidden');
-    forms.verify.reset();
-    document.getElementById('result').textContent = "Awaiting verification...";
+    const el = document.getElementById('qr-code-display-area');
+    if (el) el.classList.add('hidden');
+    const formVerify = forms.verify;
+    if (formVerify && typeof formVerify.reset === 'function') formVerify.reset();
+    const r = document.getElementById('result');
+    if (r) r.textContent = "Awaiting verification...";
 }
-
 
 // ----------------------------------------------------
 // --- III. DRAG & DROP UTILITY FUNCTIONS ---
@@ -247,13 +262,13 @@ function handleDrop(e) {
         fileNameElement.className = 'text-green-600 font-medium mt-2';
         fileNameElement.textContent = `File selected: ${droppedFile.name}`;
 
-        // Clear old content and display new file name
-        fileDropArea.innerHTML = '';
-        fileDropArea.appendChild(fileNameElement);
+        if (fileDropArea) {
+            fileDropArea.innerHTML = '';
+            fileDropArea.appendChild(fileNameElement);
 
-        // Visually signal success
-        fileDropArea.classList.remove('border-gray-300', 'border-blue-500', 'bg-blue-50');
-        fileDropArea.classList.add('border-green-500', 'bg-green-50');
+            fileDropArea.classList.remove('border-gray-300', 'border-blue-500', 'bg-blue-50');
+            fileDropArea.classList.add('border-green-500', 'bg-green-50');
+        }
     }
 }
 
@@ -261,23 +276,25 @@ function handleDragOver(e) {
     e.preventDefault();
     e.stopPropagation();
     const fileDropArea = document.getElementById('file-drop-area');
-    fileDropArea.classList.remove('border-gray-300', 'border-green-500', 'bg-green-50');
-    fileDropArea.classList.add('border-blue-500', 'bg-blue-50');
+    if (fileDropArea) {
+        fileDropArea.classList.remove('border-gray-300', 'border-green-500', 'bg-green-50');
+        fileDropArea.classList.add('border-blue-500', 'bg-blue-50');
+    }
 }
 
 function handleDragLeave(e) {
     e.preventDefault();
     e.stopPropagation();
     const fileDropArea = document.getElementById('file-drop-area');
-    // Restore neutral look if no file has been dropped
-    if (!droppedFile) {
+
+    if (fileDropArea && !droppedFile) {
         fileDropArea.classList.remove('border-blue-500', 'bg-blue-50', 'border-green-500', 'bg-green-50');
         fileDropArea.classList.add('border-gray-300');
     }
 }
 
-// Function to reset the input area's content to its default HTML
 function resetDropAreaVisuals(fileDropArea) {
+    if (!fileDropArea) return;
     fileDropArea.innerHTML = `
         <div class="text-gray-400 text-4xl mb-4">📁</div>
         <p class="text-gray-600">Click to upload or drag and drop</p>
@@ -286,9 +303,8 @@ function resetDropAreaVisuals(fileDropArea) {
     fileDropArea.classList.add('border-gray-300');
 }
 
-
 // ----------------------------------------------------
-// --- IV. QR SCANNING LOGIC (Final Version) ---
+// --- IV. QR SCANNING LOGIC ---
 // ----------------------------------------------------
 
 async function initQrScanner(isSilent = false) {
@@ -297,33 +313,33 @@ async function initQrScanner(isSilent = false) {
     const qrReaderDiv = document.getElementById('qr-reader');
     const startBtn = document.getElementById('start-scanner-btn');
 
-    // Clear previous results
-    document.getElementById('qr-scan-result').classList.add('hidden');
-    qrResultMessage.textContent = "";
-    document.getElementById('qr-detailed-info').classList.add('hidden');
-    document.getElementById('unlock-details-btn').classList.add('hidden');
+    const qrScanResult = document.getElementById('qr-scan-result');
+    if (qrScanResult) qrScanResult.classList.add('hidden');
+    if (qrResultMessage) qrResultMessage.textContent = "";
+    const qrDetailedInfo = document.getElementById('qr-detailed-info');
+    if (qrDetailedInfo) qrDetailedInfo.classList.add('hidden');
+    const unlockBtn = document.getElementById('unlock-details-btn');
+    if (unlockBtn) unlockBtn.classList.add('hidden');
     currentQrScanId = null;
 
-    // Check 1: Ensure Html5Qrcode library is loaded
     if (typeof Html5Qrcode === 'undefined') {
-        qrResultMessage.className = 'font-medium text-red-600';
-        qrResultMessage.textContent = 'Scanner library failed to load. Please try a hard refresh (Ctrl+Shift+R).';
-        document.getElementById('qr-scan-result').classList.remove('hidden');
+        if (qrResultMessage) {
+            qrResultMessage.className = 'font-medium text-red-600';
+            qrResultMessage.textContent = 'Scanner library failed to load. Please try a hard refresh (Ctrl+Shift+R).';
+        }
+        if (qrScanResult) qrScanResult.classList.remove('hidden');
         return;
     }
 
-    // 2. Setup UI for live scanning (only if not silent)
     if(!isSilent) {
         if(qrReaderDiv) qrReaderDiv.classList.remove('hidden');
         if(startBtn) startBtn.classList.add('hidden');
     }
 
-    // Initialize the main object (CRITICAL STEP FOR FILE SCAN)
     if (!html5QrCode) {
         html5QrCode = new Html5Qrcode("qr-reader");
     }
 
-    // 3. Start Camera Scanning (Conditional)
     if (!isSilent) {
         Html5Qrcode.getCameras().then(devices => {
             if (devices && devices.length) {
@@ -342,57 +358,63 @@ async function initQrScanner(isSilent = false) {
                     console.error("QR Code Scanner Start Failed (Camera error):", err);
                     if(qrReaderDiv) qrReaderDiv.classList.add('hidden');
                     if(startBtn) startBtn.classList.remove('hidden');
-                    qrResultMessage.className = 'font-medium text-orange-600';
-                    qrResultMessage.textContent = 'Camera failed to start. You can still upload a QR image below.';
-                    document.getElementById('qr-scan-result').classList.remove('hidden');
+                    if (qrResultMessage) {
+                        qrResultMessage.className = 'font-medium text-orange-600';
+                        qrResultMessage.textContent = 'Camera failed to start. You can still upload a QR image below.';
+                    }
+                    if (qrScanResult) qrScanResult.classList.remove('hidden');
                 });
             } else {
                 console.error("No cameras found on this device. Please upload a QR image.");
                 if(qrReaderDiv) qrReaderDiv.classList.add('hidden');
                 if(startBtn) startBtn.classList.remove('hidden');
-                qrResultMessage.className = 'font-medium text-orange-600';
-                qrResultMessage.textContent = 'No camera detected. Please upload a QR image.';
-                document.getElementById('qr-scan-result').classList.remove('hidden');
+                if (qrResultMessage) {
+                    qrResultMessage.className = 'font-medium text-orange-600';
+                    qrResultMessage.textContent = 'No camera detected. Please upload a QR image.';
+                }
+                if (qrScanResult) qrScanResult.classList.remove('hidden');
             }
         }).catch(err => {
             console.error("Error getting camera devices:", err);
         });
     }
 
-    // Event listener for file input
-    qrFileInput.onchange = (e) => {
-        if (e.target.files.length === 0) return;
-        const imageFile = e.target.files[0];
+    if (qrFileInput) {
+        qrFileInput.onchange = (e) => {
+            if (e.target.files.length === 0) return;
+            const imageFile = e.target.files[0];
 
-        // Stop camera if running, then scan file
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(ignore => {}).catch(err => console.warn("QR scanner stop failed:", err));
-        }
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(ignore => {}).catch(err => console.warn("QR scanner stop failed:", err));
+            }
 
-        // Show scanning message immediately
-        qrResultMessage.className = 'font-medium text-gray-700';
-        qrResultMessage.textContent = 'Scanning QR image...';
-        document.getElementById('qr-scan-result').classList.remove('hidden');
+            if (qrResultMessage) {
+                qrResultMessage.className = 'font-medium text-gray-700';
+                qrResultMessage.textContent = 'Scanning QR image...';
+            }
+            if (qrScanResult) qrScanResult.classList.remove('hidden');
 
-        html5QrCode.scanFile(imageFile, true)
-            .then(decodedText => {
-                console.log(`QR Code from file: ${decodedText}`);
-                handleQrScanResult(decodedText);
-                e.target.value = null; // Clear the input
-            })
-            .catch(err => {
-                console.error("Error scanning file:", err);
-                qrResultMessage.className = 'font-medium text-red-600';
-                qrResultMessage.textContent = "Failed to scan QR code from image. Please ensure it's a valid QR code.";
-                document.getElementById('qr-scan-result').classList.remove('hidden');
-            });
-    };
+            html5QrCode.scanFile(imageFile, true)
+                .then(decodedText => {
+                    console.log(`QR Code from file: ${decodedText}`);
+                    handleQrScanResult(decodedText);
+                    e.target.value = null;
+                })
+                .catch(err => {
+                    console.error("Error scanning file:", err);
+                    if (qrResultMessage) {
+                        qrResultMessage.className = 'font-medium text-red-600';
+                        qrResultMessage.textContent = "Failed to scan QR code from image. Please ensure it's a valid QR code.";
+                    }
+                    if (qrScanResult) qrScanResult.classList.remove('hidden');
+                });
+        };
+    }
 }
 
 async function handleQrScanResult(qrData) {
-    // Stop the scanner if it's still running (e.g., from camera scan)
     if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(ignore => {}).catch(err => console.warn("QR scanner stop failed after scan:", err));
+        try { html5QrCode.stop(); } catch (e) {}
     }
 
     const qrScanResultDiv = document.getElementById('qr-scan-result');
@@ -400,197 +422,87 @@ async function handleQrScanResult(qrData) {
     const qrDetailedInfo = document.getElementById('qr-detailed-info');
     const unlockDetailsBtn = document.getElementById('unlock-details-btn');
 
-    qrDetailedInfo.classList.add('hidden');
-    unlockDetailsBtn.classList.add('hidden');
-    qrScanResultDiv.classList.remove('hidden');
-    qrResultMessage.className = 'font-medium text-gray-700';
-    qrResultMessage.textContent = 'Scanning successful. Checking verification status...';
+    if (qrDetailedInfo) qrDetailedInfo.classList.add('hidden');
+    if (unlockDetailsBtn) unlockDetailsBtn.classList.add('hidden');
+    if (qrScanResultDiv) qrScanResultDiv.classList.remove('hidden');
+    if (qrResultMessage) {
+        qrResultMessage.className = 'font-medium text-gray-700';
+        qrResultMessage.textContent = 'Scanning successful. Checking verification status...';
+    }
 
     try {
-        // Extract the ID from the QR data
         const url = new URL(qrData);
         const docId = url.searchParams.get('id');
 
         if (!docId) {
-            qrResultMessage.className = 'font-medium text-red-600';
-            qrResultMessage.textContent = 'Invalid QR code data: Missing document ID.';
+            if (qrResultMessage) {
+                qrResultMessage.className = 'font-medium text-red-600';
+                qrResultMessage.textContent = 'Invalid QR code data: Missing document ID.';
+            }
             return;
         }
 
-        currentQrScanId = docId; // Store the ID for Web3 auth
+        currentQrScanId = docId;
 
-        // Make API call to backend for initial check
         const response = await fetch(`${API_URL}/qr-check?id=${docId}`);
         const data = await response.json();
 
         if (response.ok) {
-            qrResultMessage.className = 'font-medium text-green-600';
-            qrResultMessage.textContent = `Initial Verification: ${data.verificationStatus}`;
+            if (qrResultMessage) {
+                qrResultMessage.className = 'font-medium text-green-600';
+                qrResultMessage.textContent = `Initial Verification: ${data.verificationStatus}`;
+            }
 
-            qrDetailedInfo.classList.remove('hidden');
-            document.getElementById('qr-doc-type').textContent = data.docType || 'N/A';
-            document.getElementById('qr-status').textContent = data.verificationStatus || 'N/A';
-            document.getElementById('qr-submitted-at').textContent = new Date(data.submittedAt).toLocaleDateString() || 'N/A';
+            if (qrDetailedInfo) qrDetailedInfo.classList.remove('hidden');
+            const docTypeEl = document.getElementById('qr-doc-type');
+            const statusEl = document.getElementById('qr-status');
+            const submittedAtEl = document.getElementById('qr-submitted-at');
+            if (docTypeEl) docTypeEl.textContent = data.docType || 'N/A';
+            if (statusEl) statusEl.textContent = data.verificationStatus || 'N/A';
+            if (submittedAtEl) submittedAtEl.textContent = (data.submittedAt ? new Date(data.submittedAt).toLocaleDateString() : 'N/A');
 
-            if (data.verificationStatus === 'Verified') {
+            if (data.verificationStatus === 'Verified' && unlockDetailsBtn) {
                 unlockDetailsBtn.classList.remove('hidden');
             }
         } else {
-            qrResultMessage.className = 'font-medium text-red-600';
-            qrResultMessage.textContent = data.message || 'Verification failed or document not found.';
+            if (qrResultMessage) {
+                qrResultMessage.className = 'font-medium text-red-600';
+                qrResultMessage.textContent = data.message || 'Verification failed or document not found.';
+            }
         }
 
     } catch (error) {
-        qrResultMessage.className = 'font-medium text-red-600';
-        qrResultMessage.textContent = 'An error occurred during verification. Please check the console.';
+        console.error('handleQrScanResult error:', error);
+        if (qrResultMessage) {
+            qrResultMessage.className = 'font-medium text-red-600';
+            qrResultMessage.textContent = 'An error occurred during verification. Please check the console.';
+        }
     }
 }
-
 
 // ----------------------------------------------------
 // --- V. WEB3 & AUTHENTICATION LOGIC ---
 // ----------------------------------------------------
 
-document.getElementById('link-wallet-btn').addEventListener('click', async () => {
-    const provider = getWeb3Provider();
-    const modalStatus = document.getElementById('link-modal-status');
-    const linkedAddressDisplay = document.getElementById('linked-address-display');
-
-    modalStatus.textContent = "";
-    modalStatus.classList.remove('hidden', 'text-red-500', 'text-green-500');
-    modalStatus.textContent = "Connecting to MetaMask...";
-
-    if (!provider) {
-        modalStatus.textContent = "MetaMask not detected. Please install it.";
-        modalStatus.classList.add('text-red-500');
-        return;
-    }
-
-    try {
-        // 1. Request Wallet Access
-        const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        const walletAddress = accounts[0];
-
-        modalStatus.textContent = "Wallet connected. Linking address on server...";
-
-        // 2. Send Address to Backend
-        const response = await fetch(`${API_URL}/profile/link-wallet`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ walletAddress })
-        });
-        const data = await response.json();
-
-        if (response.ok) {
-            modalStatus.textContent = "Success!";
-            modalStatus.classList.add('text-green-500');
-            document.getElementById('linked-address-display').textContent = `Linked: ${walletAddress}`;
-            document.getElementById('linked-address-display').classList.remove('hidden');
-            document.getElementById('link-wallet-btn').classList.add('hidden');
-        } else {
-            modalStatus.textContent = data.message || "Failed to link wallet.";
-            modalStatus.classList.add('text-red-500');
-        }
-
-    } catch (error) {
-        modalStatus.textContent = "Connection failed or transaction rejected.";
-        modalStatus.classList.add('text-red-500');
-    }
-});
-
-document.getElementById('auth-sign-btn').addEventListener('click', async () => {
-    const qrId = currentQrScanId;
-    const provider = getWeb3Provider();
-    const modalStatus = document.getElementById('modal-status');
-    const resultDiv = document.getElementById('qr-scan-result');
-
-    modalStatus.textContent = "";
-    modalStatus.classList.remove('hidden', 'text-red-500', 'text-green-500');
-    modalStatus.textContent = "Connecting to MetaMask...";
-
-    if (!provider) {
-        modalStatus.textContent = "MetaMask not detected. Please install it and try again.";
-        modalStatus.classList.add('text-red-500');
-        return;
-    }
-
-    if (!qrId) {
-        modalStatus.textContent = "Error: Document ID missing. Please re-scan the QR code.";
-        modalStatus.classList.add('text-red-500');
-        return;
-    }
-
-    try {
-        // 1. Request Wallet Access
-        const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        const walletAddress = accounts[0];
-
-        // 2. Define Message (Nonce) for signing
-        const message = `Verify ownership of document ID: ${qrId}. Timestamp: ${Date.now()}`;
-
-        modalStatus.textContent = "Waiting for signature in MetaMask...";
-
-        // 3. Request Signature
-        const signature = await provider.request({
-            method: 'personal_sign',
-            params: [message, walletAddress],
-        });
-
-        modalStatus.textContent = "Signature received. Verifying ownership...";
-
-        // 4. Send Signature to Backend for Verification
-        const response = await fetch(`${API_URL}/qr-verify-signature`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ qrId, walletAddress, signature, message })
-        });
-        const data = await response.json();
-
-        if (response.ok) {
-            window.hideAuthModal();
-            // Display the FULL, sensitive data
-            document.getElementById('qr-detailed-info').innerHTML = `
-                <p class="text-md font-bold text-green-700 mb-2">✅ ${data.message}</p>
-                <p class="text-sm text-gray-600"><strong>Document Type:</strong> ${data.docType}</p>
-                <p class="text-sm text-gray-600"><strong>Document Number:</strong> ${data.docNumber}</p>
-                <p class="text-sm text-gray-600 mt-3 break-all"><strong>File Hash (SHA3):</strong> ${data.fileHash}</p>
-                <p class="text-sm text-gray-600 break-all"><strong>Blockchain TX Hash:</strong> <a href="https://sepolia.etherscan.io/tx/${data.transactionHash}" target="_blank" class="text-blue-500 hover:underline">${data.transactionHash}</a></p>
-            `;
-            document.getElementById('qr-detailed-info').classList.remove('hidden');
-            document.getElementById('unlock-details-btn').classList.add('hidden');
-            resultDiv.classList.remove('hidden');
-
-        } else {
-            modalStatus.textContent = data.message || "Signature Verification Failed on Server.";
-            modalStatus.classList.add('text-red-500');
-        }
-
-    } catch (error) {
-        modalStatus.textContent = "Authentication failed (User rejected or network error).";
-        modalStatus.classList.add('text-red-500');
-    }
-});
-
+// NOTE: These listeners are now attached inside DOMContentLoaded
 
 // ----------------------------------------------------
 // --- VI. FORM HANDLERS (UPDATED for Drag & Drop) ---
 // ----------------------------------------------------
 
-// NOTE: LISTENERS ARE ATTACHED INSIDE DOMContentLoaded
+// NOTE: These listeners are now attached inside DOMContentLoaded
 
 // ----------------------------------------------------
 // --- VII. FINAL INITIALIZATION AND EXPOSURE ---
 // ----------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', function() {
-
     // --- 1. POPULATE DOM ELEMENTS (CRITICAL) ---
     pages.guestPage = document.getElementById('guestPage');
     pages.guestAuthPage = document.getElementById('guestAuthPage');
     pages.userLoginPage = document.getElementById('userLoginPage');
     pages.dashboard = document.getElementById('dashboard');
 
-    // Populate Forms (CRITICAL for listeners)
     forms.signup = document.getElementById('signup-form');
     forms.signin = document.getElementById('signin-form');
     forms.userLogin = document.getElementById('user-login-form');
@@ -598,14 +510,12 @@ document.addEventListener('DOMContentLoaded', function() {
     forms.verify = document.getElementById('verify-form');
     forms.contact = document.getElementById('contact-form');
 
-    // Populate Messages
     messages.signup = document.getElementById('signup-message');
     messages.signin = document.getElementById('signin-message');
     messages.userLogin = document.getElementById('user-login-message');
     messages.profile = document.getElementById('profile-message');
     messages.contact = document.getElementById('contact-message-status');
 
-    // Populate Inputs/Stats
     profileInputs.fullName = document.getElementById('profile-edit-fullname');
     profileInputs.email = document.getElementById('profile-edit-email');
     profileInputs.phone = document.getElementById('profile-edit-phone');
@@ -617,18 +527,16 @@ document.addEventListener('DOMContentLoaded', function() {
     settingsToggles.email = document.getElementById('email-toggle');
     settingsToggles.sms = document.getElementById('sms-toggle');
 
-
     const fileDropArea = document.getElementById('file-drop-area');
     const fileInput = document.getElementById('document-file');
 
-
     // --- 2. DRAG & DROP LISTENERS (RELIABLE ATTACHMENT) ---
     if (fileDropArea && fileInput) {
+        fileDropArea.addEventListener('click', () => fileInput.click());
 
-        // A. Handle Files Selected by Clicking (Clear the dropped file if user clicks)
         fileInput.addEventListener('change', () => {
             droppedFile = null;
-            if (fileInput.files.length > 0) {
+            if (fileInput.files && fileInput.files.length > 0) {
                 const file = fileInput.files[0];
                 const fileNameElement = document.createElement('p');
                 fileNameElement.className = 'text-green-600 font-medium mt-2';
@@ -642,12 +550,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // B. Handle Drag and Drop Events
         fileDropArea.addEventListener('dragover', handleDragOver);
         fileDropArea.addEventListener('dragleave', handleDragLeave);
         fileDropArea.addEventListener('drop', handleDrop);
 
-        // Prevents default browser drop behavior (opening file in new tab)
         document.body.addEventListener('dragover', (e) => e.preventDefault());
         document.body.addEventListener('drop', (e) => e.preventDefault());
     }
@@ -661,179 +567,370 @@ document.addEventListener('DOMContentLoaded', function() {
         showPage('guestPage');
     }
 
-    // --- 4. ATTACH FORM LISTENERS (MOVED HERE FOR STABILITY) ---
+    // --- 4. ATTACH FORM LISTENERS (CRITICAL FIX: Attach after elements exist) ---
 
-    forms.signup.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const fullName = document.getElementById('signup-fullname').value;
-        const email = document.getElementById('signup-email').value;
-        const phone = document.getElementById('signup-phone').value;
-        const password = document.getElementById('signup-password').value;
+    // Web3 Link Wallet Button
+    const linkWalletBtn = document.getElementById('link-wallet-btn');
+    if (linkWalletBtn) {
+        linkWalletBtn.addEventListener('click', async () => {
+            const provider = getWeb3Provider();
+            const modalStatus = document.getElementById('link-modal-status');
+            const linkedAddressDisplay = document.getElementById('linked-address-display');
 
-        const response = await fetch(`${API_URL}/auth/signup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fullName, email, phone, password })
+            if (modalStatus) {
+                modalStatus.textContent = "";
+                modalStatus.classList.remove('hidden', 'text-red-500', 'text-green-500');
+                modalStatus.textContent = "Connecting to MetaMask...";
+            }
+
+            if (!provider) {
+                if (modalStatus) {
+                    modalStatus.textContent = "MetaMask not detected. Please install it.";
+                    modalStatus.classList.add('text-red-500');
+                }
+                return;
+            }
+
+            try {
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
+                const walletAddress = accounts[0];
+
+                if (modalStatus) modalStatus.textContent = "Wallet connected. Linking address on server...";
+
+                const response = await fetch(`${API_URL}/api/profile/link-wallet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletAddress })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (modalStatus) {
+                        modalStatus.textContent = "Success!";
+                        modalStatus.classList.add('text-green-500');
+                    }
+                    if (linkedAddressDisplay) {
+                        linkedAddressDisplay.textContent = `Linked: ${walletAddress}`;
+                        linkedAddressDisplay.classList.remove('hidden');
+                    }
+                    linkWalletBtn.classList.add('hidden');
+                } else {
+                    if (modalStatus) {
+                        modalStatus.textContent = data.message || "Failed to link wallet.";
+                        modalStatus.classList.add('text-red-500');
+                    }
+                }
+            } catch (error) {
+                if (modalStatus) {
+                    modalStatus.textContent = "Connection failed or transaction rejected.";
+                    modalStatus.classList.add('text-red-500');
+                }
+            }
         });
+    }
 
-        const data = await response.json();
-        showMessage(messages.signup, data.message, response.ok ? 'success' : 'error');
-        if (response.ok) {
-            setTimeout(() => window.switchGuestTab('signin'), 1000);
-        }
-    });
+    // Web3 Auth Sign Button
+    const authSignBtn = document.getElementById('auth-sign-btn');
+    if (authSignBtn) {
+        authSignBtn.addEventListener('click', async () => {
+            const qrId = currentQrScanId;
+            const provider = getWeb3Provider();
+            const modalStatus = document.getElementById('modal-status');
+            const resultDiv = document.getElementById('qr-scan-result');
 
-    forms.signin.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('signin-email').value;
-        const password = document.getElementById('signin-password').value;
+            if (modalStatus) {
+                modalStatus.textContent = "";
+                modalStatus.classList.remove('hidden', 'text-red-500', 'text-green-500');
+                modalStatus.textContent = "Connecting to MetaMask...";
+            }
 
-        const response = await fetch(`${API_URL}/auth/signin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            if (!provider) {
+                if (modalStatus) {
+                    modalStatus.textContent = "MetaMask not detected. Please install it and try again.";
+                    modalStatus.classList.add('text-red-500');
+                }
+                return;
+            }
+
+            if (!qrId) {
+                if (modalStatus) {
+                    modalStatus.textContent = "Error: Document ID missing. Please re-scan the QR code.";
+                    modalStatus.classList.add('text-red-500');
+                }
+                return;
+            }
+
+            try {
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
+                const walletAddress = accounts[0];
+
+                const message = `Verify ownership of document ID: ${qrId}. Timestamp: ${Date.now()}`;
+
+                if (modalStatus) modalStatus.textContent = "Waiting for signature in MetaMask...";
+
+                const signature = await provider.request({
+                    method: 'personal_sign',
+                    params: [message, walletAddress],
+                });
+
+                if (modalStatus) modalStatus.textContent = "Signature received. Verifying ownership...";
+
+                const response = await fetch(`${API_URL}/qr-verify-signature`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ qrId, walletAddress, signature, message })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.hideAuthModal();
+
+                    const documentCID = data.documentCID;
+                    const viewUrl = documentCID ? `https://gateway.pinata.cloud/ipfs/${documentCID}` : '#';
+
+                    const linkBaseClass = "px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-md hover:bg-green-700 inline-block";
+                    let viewLinkHtml;
+                    if (documentCID) {
+                        viewLinkHtml = `<a href="${viewUrl}" target="_blank" class="${linkBaseClass}">View Document</a>`;
+                    } else {
+                        viewLinkHtml = `<a href="#" onclick="event.preventDefault(); alert('Document file not found on IPFS.');" class="${linkBaseClass} opacity-50 cursor-not-allowed">View Document</a>`;
+                    }
+
+                    const qrDetailedInfoEl = document.getElementById('qr-detailed-info');
+                    if (qrDetailedInfoEl) {
+                        qrDetailedInfoEl.innerHTML = `
+                            <p class="text-md font-bold text-green-700 mb-2">✅ ${data.message}</p>
+                            <p class="text-sm text-gray-600"><strong>Document Type:</strong> ${data.docType}</p>
+                            <p class="text-sm text-gray-600"><strong>Document Number:</strong> ${data.docNumber}</p>
+
+                            <div class="mt-4">
+                                ${viewLinkHtml}
+                            </div>
+
+                            <p class="text-sm text-gray-600 mt-3 break-all"><strong>File Hash (SHA3):</strong> ${data.fileHash}</p>
+                            <p class="text-sm text-gray-600 break-all"><strong>Blockchain TX Hash:</strong> <a href="https://sepolia.etherscan.io/tx/${data.transactionHash}" target="_blank" class="text-blue-500 hover:underline">${data.transactionHash}</a></p>
+                        `;
+                        qrDetailedInfoEl.classList.remove('hidden');
+                    }
+
+                    const unlockBtn = document.getElementById('unlock-details-btn');
+                    if (unlockBtn) unlockBtn.classList.add('hidden');
+
+                    if (resultDiv) resultDiv.classList.remove('hidden');
+                } else {
+                    if (modalStatus) {
+                        modalStatus.textContent = data.message || "Signature Verification Failed on Server.";
+                        modalStatus.classList.add('text-red-500');
+                    }
+                }
+            } catch (error) {
+                if (modalStatus) {
+                    modalStatus.textContent = "Authentication failed (User rejected or network error).";
+                    modalStatus.classList.add('text-red-500');
+                }
+            }
         });
+    }
 
-        const data = await response.json();
-        showMessage(messages.signin, data.message, response.ok ? 'success' : 'error');
-        if (response.ok) {
-            state.isAuthenticated = true;
-            localStorage.setItem('isLoggedInClient', 'true'); // NEW: Set client flag
+    // --- Signup/Signin/Profile Handlers ---
+    if (forms.signup) {
+        forms.signup.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('signup-fullname').value;
+            const email = document.getElementById('signup-email').value;
+            const phone = document.getElementById('signup-phone').value;
+            const password = document.getElementById('signup-password').value;
 
-            // FIX: Add a small delay (50ms) to ensure the browser saves the session cookie
-            showPage('dashboard');
-            setTimeout(() => {
-                fetchStats();
-                fetchProfile();
-            }, 50);
-        }
-    });
-
-    forms.userLogin.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('user-login-email').value;
-        const password = document.getElementById('user-login-password').value;
-
-        const response = await fetch(`${API_URL}/auth/signin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-
-        const data = await response.json();
-        showMessage(messages.userLogin, data.message, response.ok ? 'success' : 'error');
-        if (response.ok) {
-            state.isAuthenticated = true;
-            localStorage.setItem('isLoggedInClient', 'true'); // NEW: Set client flag
-
-            // FIX: Add a small delay (50ms) to ensure the browser saves the session cookie
-            showPage('dashboard');
-            setTimeout(() => {
-                fetchStats();
-                fetchProfile();
-            }, 50);
-        }
-    });
-
-    forms.profile.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const fullName = profileInputs.fullName.value;
-        const email = profileInputs.email.value;
-        const phone = profileInputs.phone.value;
-
-        const response = await fetch(`${API_URL}/profile`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fullName, email, phone })
-        });
-
-        const data = await response.json();
-        showMessage(messages.profile, data.message, response.ok ? 'success' : 'error');
-        if (response.ok) {
-            fetchProfile();
-        }
-    });
-
-    forms.verify.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const docType = document.getElementById('doc-type').value;
-        const docNumber = document.getElementById('doc-number').value;
-        const fileInput = document.getElementById('document-file');
-        const resultDiv = document.getElementById('result');
-        const fileDropArea = document.getElementById('file-drop-area');
-
-        const file = droppedFile || fileInput.files[0];
-
-        if (!file) {
-            resultDiv.className = 'mt-6 p-4 text-center text-red-600 bg-red-100 rounded-lg font-semibold';
-            resultDiv.textContent = 'Please select a file to upload.';
-            return;
-        }
-
-        resultDiv.className = 'mt-6 p-4 text-center text-gray-500 bg-gray-100 rounded-lg font-semibold';
-        resultDiv.textContent = 'Verifying...';
-        document.getElementById('qr-code-display-area').classList.add('hidden');
-
-        try {
-            const formData = new FormData();
-            formData.append('document', file);
-            formData.append('docType', docType);
-            formData.append('docNumber', docNumber);
-
-            const response = await fetch(`${API_URL}/verify`, {
+            const response = await fetch(`${API_URL}/auth/signup`, {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fullName, email, phone, password })
             });
 
             const data = await response.json();
-
+            showMessage(messages.signup, data.message, response.ok ? 'success' : 'error');
             if (response.ok) {
-                resultDiv.className = 'mt-6 p-4 text-center text-green-600 bg-green-100 rounded-lg font-semibold';
-                resultDiv.textContent = `Document Found and Verified!`;
-                fetchStats();
-
-                const qrDisplayArea = document.getElementById('qr-code-display-area');
-                const generatedQrCodeImg = document.getElementById('generated-qr-code');
-                const qrCodeLinkText = document.getElementById('qr-code-link-text');
-
-                if (data.qrCodeDataUrl) {
-                    generatedQrCodeImg.src = data.qrCodeDataUrl;
-                    qrCodeLinkText.href = data.qrCodeLink;
-                    qrCodeLinkText.textContent = data.qrCodeLink;
-                    qrDisplayArea.classList.remove('hidden');
-                } else {
-                    console.warn("QR Code data URL not received from server.");
-                }
-            } else {
-                resultDiv.className = 'mt-6 p-4 text-center text-red-600 bg-red-100 rounded-lg font-semibold';
-                resultDiv.textContent = data.message || 'Document not found or invalid.';
-                fetchStats();
+                setTimeout(() => window.switchGuestTab('signin'), 1000);
             }
-        } catch (error) {
-            console.error('Error during verification:', error);
-            resultDiv.className = 'mt-6 p-4 text-center text-red-600 bg-red-100 rounded-lg font-semibold';
-            resultDiv.textContent = 'Could not connect to the server. Please check the console.';
-        }
-
-        droppedFile = null;
-        resetDropAreaVisuals(fileDropArea);
-        fileInput.value = null;
-    });
-
-    forms.contact.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const subject = document.getElementById('contact-subject').value;
-        const message = document.getElementById('contact-message').value;
-
-        const response = await fetch(`${API_URL}/contact`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subject, message })
         });
+    }
 
-        const data = await response.json();
-        showMessage(messages.contact, data.message, response.ok ? 'success' : 'error');
-    });
+    if (forms.signin) {
+        forms.signin.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signin-email').value;
+            const password = document.getElementById('signin-password').value;
+
+            const response = await fetch(`${API_URL}/auth/signin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+            showMessage(messages.signin, data.message, response.ok ? 'success' : 'error');
+            if (response.ok) {
+                state.isAuthenticated = true;
+                localStorage.setItem('isLoggedInClient', 'true');
+                showPage('dashboard');
+                setTimeout(() => {
+                    fetchStats();
+                    fetchProfile();
+                }, 50);
+            }
+        });
+    }
+
+    if (forms.userLogin) {
+        forms.userLogin.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('user-login-email').value;
+            const password = document.getElementById('user-login-password').value;
+
+            const response = await fetch(`${API_URL}/auth/signin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+            showMessage(messages.userLogin, data.message, response.ok ? 'success' : 'error');
+            if (response.ok) {
+                state.isAuthenticated = true;
+                localStorage.setItem('isLoggedInClient', 'true');
+                showPage('dashboard');
+                setTimeout(() => {
+                    fetchStats();
+                    fetchProfile();
+                }, 50);
+            }
+        });
+    }
+
+    if (forms.profile) {
+        forms.profile.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = profileInputs.fullName.value;
+            const email = profileInputs.email.value;
+            const phone = profileInputs.phone.value;
+
+            const response = await fetch(`${API_URL}/profile`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fullName, email, phone })
+            });
+
+            const data = await response.json();
+            showMessage(messages.profile, data.message, response.ok ? 'success' : 'error');
+            if (response.ok) {
+                fetchProfile();
+            }
+        });
+    }
+
+    if (forms.verify) {
+        forms.verify.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const docType = document.getElementById('doc-type').value;
+            const docNumber = document.getElementById('doc-number').value;
+            const fileInput = document.getElementById('document-file');
+            const resultDiv = document.getElementById('result');
+            const fileDropArea = document.getElementById('file-drop-area');
+
+            const file = droppedFile || fileInput.files[0];
+
+            if (!file) {
+                resultDiv.className = 'mt-6 p-4 text-center text-red-600 bg-red-100 rounded-lg font-semibold';
+                resultDiv.textContent = 'Please select a file to upload.';
+                return;
+            }
+
+            resultDiv.className = 'mt-6 p-4 text-center text-gray-500 bg-gray-100 rounded-lg font-semibold';
+            resultDiv.textContent = 'Verifying...';
+
+            document.getElementById('qr-code-display-area').classList.add('hidden');
+
+            try {
+                const formData = new FormData();
+                formData.append('document', file);
+                formData.append('docType', docType);
+                formData.append('docNumber', docNumber);
+
+                const response = await fetch(`${API_URL}/verify`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'mt-6 p-4 text-center text-green-600 bg-green-100 rounded-lg font-semibold';
+                    resultDiv.textContent = data.message || `Document Found and Verified!`;
+                    fetchStats();
+
+                    const qrDisplayArea = document.getElementById('qr-code-display-area');
+                    const generatedQrCodeImg = document.getElementById('generated-qr-code');
+                    const qrCodeLinkText = document.getElementById('qr-code-link-text');
+                    const qrHeader = document.querySelector('#qr-code-display-area h3');
+                    const qrParagraph = document.querySelector('#qr-code-display-area p');
+
+                    if (qrDisplayArea) qrDisplayArea.classList.remove('hidden');
+
+                    if (data.qrCodeDataUrl) {
+                        if (generatedQrCodeImg) generatedQrCodeImg.src = data.qrCodeDataUrl;
+                        if (qrHeader) qrHeader.textContent = "Verification Complete!";
+                        if (qrParagraph) qrParagraph.textContent = "Your document has been verified. Use this QR code for quick re-verification.";
+
+                        if (qrCodeLinkText) {
+                            qrCodeLinkText.href = data.qrCodeLink;
+                            qrCodeLinkText.textContent = data.qrCodeLink;
+                        }
+                    } else if (data.qrCodeLink) {
+                        if (generatedQrCodeImg) generatedQrCodeImg.src = '';
+                        if (qrHeader) qrHeader.textContent = "Document Already Verified";
+                        if (qrParagraph) qrParagraph.textContent = "Permanent link available below. Scan it using your QR app.";
+
+                        if (qrCodeLinkText) {
+                            qrCodeLinkText.href = data.qrCodeLink;
+                            qrCodeLinkText.textContent = data.qrCodeLink;
+                        }
+                    } else {
+                        if (qrDisplayArea) qrDisplayArea.classList.add('hidden');
+                        console.warn("No QR Code link or data received from server.");
+                    }
+                } else {
+                    resultDiv.className = 'mt-6 p-4 text-center text-red-600 bg-red-100 rounded-lg font-semibold';
+                    resultDiv.textContent = data.message || 'Document not found or invalid.';
+                    fetchStats();
+                }
+            } catch (error) {
+                console.error('Error during verification:', error);
+                resultDiv.className = 'mt-6 p-4 text-center text-red-600 bg-red-100 rounded-lg font-semibold';
+                resultDiv.textContent = 'Could not connect to the server. Please check the console.';
+            }
+
+            droppedFile = null;
+            resetDropAreaVisuals(fileDropArea);
+            fileInput.value = null;
+        });
+    }
+
+    if (forms.contact) {
+        forms.contact.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const subject = document.getElementById('contact-subject').value;
+            const message = document.getElementById('contact-message').value;
+
+            const response = await fetch(`${API_URL}/contact`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject, message })
+            });
+
+            const data = await response.json();
+            showMessage(messages.contact, data.message, response.ok ? 'success' : 'error');
+        });
+    }
 
     if (settingsToggles.email) {
         settingsToggles.email.addEventListener('change', async (e) => {
@@ -842,9 +939,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ emailNotifications: e.target.checked })
             });
-            if (!response.ok) {
-                console.error('Failed to update settings');
-            }
+            if (!response.ok) { console.error('Failed to update settings'); }
         });
     }
 
@@ -855,24 +950,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ smsNotifications: e.target.checked })
             });
-            if (!response.ok) {
-                console.error('Failed to update settings');
-            }
+            if (!response.ok) { console.error('Failed to update settings'); }
         });
     }
 
     // --- 5. EXPOSE FUNCTIONS TO WINDOW SCOPE ---
-
     window.showPage = showPage;
     window.showDashboardSection = showDashboardSection;
     window.showGuestAuth = showGuestAuth;
     window.showUserLogin = showUserLogin;
-
     window.showUnlockDetailsModal = window.showAuthModal;
     window.hideQrDisplayArea = hideQrDisplayArea;
     window.showLinkWalletModal = window.showLinkWalletModal;
     window.hideLinkWalletModal = window.hideLinkWalletModal;
-
     window.handleLogout = handleLogout;
     window.initQrScanner = initQrScanner;
 
@@ -883,19 +973,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const signinForm = document.getElementById('signin-form');
 
         if (tab === 'signup') {
-            signupTab.classList.add('bg-blue-600', 'text-white');
-            signupTab.classList.remove('text-gray-600');
-            signinTab.classList.remove('bg-blue-600', 'text-white');
-            signinTab.classList.add('text-gray-600');
-            signupForm.classList.remove('hidden');
-            signinForm.classList.add('hidden');
+            if (signupTab) signupTab.classList.add('bg-blue-600', 'text-white');
+            if (signupTab) signupTab.classList.remove('text-gray-600');
+            if (signinTab) signinTab.classList.remove('bg-blue-600', 'text-white');
+            if (signinTab) signinTab.classList.add('text-gray-600');
+            if (signupForm) signupForm.classList.remove('hidden');
+            if (signinForm) signinForm.classList.add('hidden');
         } else {
-            signinTab.classList.add('bg-blue-600', 'text-white');
-            signinTab.classList.remove('text-gray-600');
-            signupTab.classList.remove('bg-blue-600', 'text-white');
-            signupTab.classList.add('text-gray-600');
-            signinForm.classList.remove('hidden');
-            signupForm.classList.add('hidden');
+            if (signinTab) signinTab.classList.add('bg-blue-600', 'text-white');
+            if (signinTab) signinTab.classList.remove('text-gray-600');
+            if (signupTab) signupTab.classList.remove('bg-blue-600', 'text-white');
+            if (signupTab) signupTab.classList.add('text-gray-600');
+            if (signinForm) signinForm.classList.remove('hidden');
+            if (signupForm) signupForm.classList.add('hidden');
         }
     };
 });
+
+// ===== CRITICAL FIX: Ensure functions are available globally =====
+window.showGuestAuth = showGuestAuth;
+window.showUserLogin = showUserLogin;
