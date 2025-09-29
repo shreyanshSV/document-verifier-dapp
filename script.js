@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (modalStatus) modalStatus.textContent = "Wallet connected. Linking address on server...";
 
-                const response = await fetch(`${API_URL}/api/profile/link-wallet`, {
+                const response = await fetch(`${API_URL}/profile/link-wallet`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ walletAddress })
